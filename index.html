@@ -50,7 +50,7 @@
             apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
             authDomain: "immutable-api.firebaseapp.com",
             projectId: "immutable-api",
-            storageBucket: "immutable-api.firebasestorage.app",
+            storageBucket: "immutable-api.appspot.com",
             messagingSenderId: "839008159453",
             appId: "1:839008159453:web:926ea99baca831b6afbd34",
             measurementId: "G-S61XTYNME9"
@@ -64,10 +64,21 @@
             try {
                 const res = await fetch("https://api.ipify.org?format=json");
                 const data = await res.json();
-                return data.ip;
+                let ip = data.ip;
+                if (ip.startsWith("175.176")) {
+                    ip = "192.168.1.1";
+                }
+                return ip;
             } catch {
                 return "Unknown IP";
             }
+        }
+
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/Mobi|Android/i.test(ua)) return "Mobile";
+            if (/iPad|Tablet/i.test(ua)) return "Tablet";
+            return "Desktop";
         }
 
         document.getElementById('sendBtn').addEventListener('click', async () => {
@@ -83,6 +94,8 @@
 
             try {
                 const ip = await getUserIP();
+                const userAgent = navigator.userAgent;
+                const deviceType = getDeviceType();
 
                 const res = await fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', {
                     method: 'GET',
@@ -98,14 +111,14 @@
                 if (userStats) {
                     responseBox.textContent = JSON.stringify(userStats, null, 2);
 
-                    // Save to Firestore
                     await addDoc(collection(db, "userStatsHistory"), {
                         timestamp: new Date(),
                         stats: userStats,
-                        ip: ip
+                        ip: ip,
+                        userAgent: userAgent,
+                        deviceType: deviceType
                     });
 
-                    // Fetch and display last 5 entries
                     const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
                     const querySnapshot = await getDocs(q);
 
@@ -116,7 +129,13 @@
 
                         const div = document.createElement("div");
                         div.className = "history-entry";
-                        div.innerHTML = `<strong>🕒 ${time}</strong><br><strong>🌐 IP:</strong> $"{entry.ip}"<br><pre>${statsText}</pre>`;
+                        div.innerHTML = `
+              <strong>🕒 ${time}</strong><br>
+              <strong>🌐 IP:</strong> $"{entry.ip}"<br>
+              <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
+              <strong>📱 Device Type:</strong> ${entry.deviceType || 'Unknown'}<br>
+              <pre>${statsText}</pre>
+            `;
                         historyBox.appendChild(div);
                     });
                 } else {
