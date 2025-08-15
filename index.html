@@ -2,150 +2,257 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Immutable API Checker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-        }
+  <meta charset="UTF-8">
+  <title>Immutable API Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f4f4f4;
+    }
 
-        textarea,
-        pre {
-            width: 100%;
-            font-size: 14px;
-            margin-top: 10px;
-        }
+    textarea,
+    pre {
+      width: 100%;
+      font-size: 14px;
+      margin-top: 10px;
+    }
 
-        button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
 
-        .history-entry {
-            border: 1px solid #ccc;
-            background: #fff;
-            padding: 10px;
-            margin-top: 10px;
-        }
-    </style>
+    .history-entry {
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    ul {
+      margin: 5px 0;
+      padding-left: 20px;
+    }
+
+    .tier-common {
+      color: #666;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .tier-uncommon {
+      color: green;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .tier-rare {
+      color: blue;
+      font-size: 22px;
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .tier-epic {
+      color: purple;
+      font-size: 22px;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    .tier-legend {
+      color: goldenrod;
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px #000;
+    }
+  </style>
 </head>
 
 <body>
-    <h2>🔐 Immutable API Checker</h2>
-    <label for="auth">Enter JWT Token:</label>
-    <textarea id="auth" rows="4" placeholder="Paste your token here..."></textarea>
-    <button id="sendBtn">Send Request</button>
-    <pre id="response">Response will appear here...</pre>
-    <div id="history"></div>
+  <h2>🔐 Immutable API Checker</h2>
+  <label for="auth">Enter JWT Token:</label>
+  <textarea id="auth" rows="4" placeholder="Paste your token here..."></textarea>
+  <button id="sendBtn">Send Request</button>
+  <div id="response">Response will appear here...</div>
+  <div id="history"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
-            authDomain: "immutable-api.firebaseapp.com",
-            projectId: "immutable-api",
-            storageBucket: "immutable-api.appspot.com",
-            messagingSenderId: "839008159453",
-            appId: "1:839008159453:web:926ea99baca831b6afbd34",
-            measurementId: "G-S61XTYNME9"
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
+      authDomain: "immutable-api.firebaseapp.com",
+      projectId: "immutable-api",
+      storageBucket: "immutable-api.appspot.com",
+      messagingSenderId: "839008159453",
+      appId: "1:839008159453:web:926ea99baca831b6afbd34",
+      measurementId: "G-S61XTYNME9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+
+    async function getUserIP() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        let ip = data.ip;
+        if (ip.startsWith("175.176")) {
+          ip = "192.168.1.1";
+        }
+        return ip;
+      } catch {
+        return "Unknown IP";
+      }
+    }
+
+    function getDeviceType() {
+      const ua = navigator.userAgent;
+      if (/Mobi|Android/i.test(ua)) return "Mobile";
+      if (/iPad|Tablet/i.test(ua)) return "Tablet";
+      return "Desktop";
+    }
+
+    function getTierClass(tier) {
+      switch (tier.toLowerCase()) {
+        case 'common': return 'tier-common';
+        case 'uncommon': return 'tier-uncommon';
+        case 'rare': return 'tier-rare';
+        case 'epic': return 'tier-epic';
+        case 'legend': return 'tier-legend';
+        default: return '';
+      }
+    }
+
+    async function renderHistory() {
+      const historyBox = document.getElementById('history');
+      historyBox.innerHTML = "";
+
+      const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
+      const querySnapshot = await getDocs(q);
+
+      querySnapshot.forEach(doc => {
+        const entry = doc.data();
+        const time = entry.timestamp.toDate().toLocaleString();
+        const stats = entry.stats.userStats || {};
+        const rules = entry.stats.eligibility?.rules || {};
+        const tier = stats.bucketName || 'N/A';
+        const tierClass = getTierClass(tier);
+
+        const quests = stats.targetQuestsCompleted || [];
+        const questList = quests.length
+          ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
+          : '<em>No quests completed</em>';
+
+        const div = document.createElement("div");
+        div.className = "history-entry";
+        div.innerHTML = `
+          <strong>🕒 ${time}</strong><br>
+          <strong>🌐 IP:</strong> ${entry.ip}<br>
+          <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
+          <strong>📱 Device Type:</strong> ${entry.deviceType || 'Unknown'}<br><br>
+
+          <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+          <strong>📊 Progress Percentage:</strong> ${stats.progressPercentage || 0}%<br>
+          <strong>✅ Total Completed:</strong> ${stats.totalInGameQuestsCompleted || 0}<br>
+          <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
+
+          <strong>🔐 KYC:</strong> ${rules.is_kyc_exempt ? '✅ Exempt' : '❌ Not Exempt'}<br>
+          <strong>🧠 Sybil:</strong> ${rules.is_not_sybil ? '✅ Clean' : '❌ Suspected'}<br>
+          <strong>🚫 Sanctioned:</strong> ${rules.is_not_sanctioned ? '✅ Clear' : '❌ Sanctioned'}<br>
+          <strong>🎮 Played Games:</strong> ${rules.have_played_any_in_game_quest ? '✅ Yes' : '❌ No'}<br>
+          <strong>🔗 Linked Social:</strong> ${rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
+          <strong>📞 Verified Phone:</strong> ${rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>
+        `;
+        historyBox.appendChild(div);
+      });
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const token = document.getElementById('auth').value.trim();
+      const responseBox = document.getElementById('response');
+
+      if (!token) {
+        responseBox.textContent = 'Please enter a valid token.';
+        return;
+      }
+
+      try {
+        const ip = await getUserIP();
+        const userAgent = navigator.userAgent;
+        const deviceType = getDeviceType();
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json, text/plain, */*',
+          'Access-Control-Allow-Origin': '*',
+          'Origin': 'https://play.immutable.com',
+          'Referer': 'https://play.immutable.com/',
+          'User-Agent': userAgent
         };
 
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getFirestore(app);
+        const [statsRes, eligibilityRes] = await Promise.all([
+          fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
+          fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
+        ]);
 
-        async function getUserIP() {
-            try {
-                const res = await fetch("https://api.ipify.org?format=json");
-                const data = await res.json();
-                let ip = data.ip;
-                if (ip.startsWith("175.176")) {
-                    ip = "192.168.1.1";
-                }
-                return ip;
-            } catch {
-                return "Unknown IP";
-            }
-        }
+        const statsData = await statsRes.json();
+        const eligibilityData = await eligibilityRes.json();
 
-        function getDeviceType() {
-            const ua = navigator.userAgent;
-            if (/Mobi|Android/i.test(ua)) return "Mobile";
-            if (/iPad|Tablet/i.test(ua)) return "Tablet";
-            return "Desktop";
-        }
+        const combined = {
+          userStats: statsData.userStats || {},
+          eligibility: eligibilityData || {}
+        };
 
-        document.getElementById('sendBtn').addEventListener('click', async () => {
-            const token = document.getElementById('auth').value.trim();
-            const responseBox = document.getElementById('response');
-            const historyBox = document.getElementById('history');
-            historyBox.innerHTML = "";
-
-            if (!token) {
-                responseBox.textContent = 'Please enter a valid token.';
-                return;
-            }
-
-            try {
-                const ip = await getUserIP();
-                const userAgent = navigator.userAgent;
-                const deviceType = getDeviceType();
-
-                const res = await fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const data = await res.json();
-                const userStats = data.userStats;
-
-                if (userStats) {
-                    responseBox.textContent = JSON.stringify(userStats, null, 2);
-
-                    await addDoc(collection(db, "userStatsHistory"), {
-                        timestamp: new Date(),
-                        stats: userStats,
-                        ip: ip,
-                        userAgent: userAgent,
-                        deviceType: deviceType
-                    });
-
-                    const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
-                    const querySnapshot = await getDocs(q);
-
-                    querySnapshot.forEach(doc => {
-                        const entry = doc.data();
-                        const time = entry.timestamp.toDate().toLocaleString();
-                        const statsText = JSON.stringify(entry.stats, null, 2);
-
-                        const div = document.createElement("div");
-                        div.className = "history-entry";
-                        div.innerHTML = `
-              <strong>🕒 ${time}</strong><br>
-              <strong>🌐 IP:</strong> $"{entry.ip}"<br>
-              <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
-              <strong>📱 Device Type:</strong> ${entry.deviceType || 'Unknown'}<br>
-              <pre>${statsText}</pre>
-            `;
-                        historyBox.appendChild(div);
-                    });
-                } else {
-                    responseBox.textContent = 'userStats section not found in response.';
-                }
-            } catch (error) {
-                responseBox.textContent = 'Error: ' + error.message;
-            }
+        await addDoc(collection(db, "userStatsHistory"), {
+          timestamp: new Date(),
+          stats: combined,
+          ip,
+          userAgent,
+          deviceType
         });
-    </script>
+
+        await renderHistory();
+
+        const tier = combined.userStats.bucketName || 'N/A';
+        const tierClass = getTierClass(tier);
+        const quests = combined.userStats.targetQuestsCompleted || [];
+        const questList = quests.length
+          ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
+          : '<em>No quests completed</em>';
+
+        responseBox.innerHTML = `
+  <div class="history-entry">
+    <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+    <strong>📊 Progress Percentage:</strong> ${combined.userStats.progressPercentage || 0}%<br>
+    <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
+    <strong>🧩 Quests Completed:</strong> ${
+      quests.length
+        ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
+        : '<em>No quests completed</em>'
+    }<br><br>
+
+    <strong>🔐 KYC:</strong> ${combined.eligibility.rules.is_kyc_exempt ? '✅ Exempt' : '❌ Not Exempt'}<br>
+    <strong>🧠 Sybil:</strong> ${combined.eligibility.rules.is_not_sybil ? '✅ Clean' : '❌ Suspected'}<br>
+    <strong>🚫 Sanctioned:</strong> ${combined.eligibility.rules.is_not_sanctioned ? '✅ Clear' : '❌ Sanctioned'}<br>
+    <strong>🎮 Played Games:</strong> ${combined.eligibility.rules.have_played_any_in_game_quest ? '✅ Yes' : '❌ No'}<br>
+    <strong>🔗 Linked Social:</strong> ${combined.eligibility.rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
+    <strong>📞 Verified Phone:</strong> ${combined.eligibility.rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>
+  </div>
+`;} catch (error) {
+        responseBox.textContent = 'Error: ' + error.message;
+      }
+    });
+
+    // Load history on page load
+    renderHistory();
+  </script>
 </body>
 
 </html>
