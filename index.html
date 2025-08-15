@@ -3,44 +3,78 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Immutable API Request</title>
+    <title>Immutable API Checker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 40px;
+            background-color: #f4f4f4;
         }
 
-        input,
         textarea,
+        pre {
+            width: 100%;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
         button {
             margin-top: 10px;
-            width: 100%;
-            padding: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
         }
 
-        #response {
-            white-space: pre-wrap;
-            background: #f4f4f4;
+        .history-entry {
+            border: 1px solid #ccc;
+            background: #fff;
             padding: 10px;
-            margin-top: 20px;
+            margin-top: 10px;
         }
     </style>
 </head>
 
 <body>
-    <h2>Immutable API Request</h2>
-    <label for="auth">Authorization Token:</label>
-    <textarea id="auth" rows="6" placeholder="Paste your JWT token here..."></textarea>
+    <h2>🔐 Immutable API Checker</h2>
+    <label for="auth">Enter JWT Token:</label>
+    <textarea id="auth" rows="4" placeholder="Paste your token here..."></textarea>
+    <button id="sendBtn">Send Request</button>
+    <pre id="response">Response will appear here...</pre>
+    <div id="history"></div>
 
-    <button onclick="sendRequest()">Send Request</button>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    <h3>Response:</h3>
-    <div id="response">Waiting for request...</div>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
+            authDomain: "immutable-api.firebaseapp.com",
+            projectId: "immutable-api",
+            storageBucket: "immutable-api.firebasestorage.app",
+            messagingSenderId: "839008159453",
+            appId: "1:839008159453:web:926ea99baca831b6afbd34",
+            measurementId: "G-S61XTYNME9"
+        };
 
-    <script>
-        async function sendRequest() {
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+
+        async function getUserIP() {
+            try {
+                const res = await fetch("https://api.ipify.org?format=json");
+                const data = await res.json();
+                return data.ip;
+            } catch {
+                return "Unknown IP";
+            }
+        }
+
+        document.getElementById('sendBtn').addEventListener('click', async () => {
             const token = document.getElementById('auth').value.trim();
             const responseBox = document.getElementById('response');
+            const historyBox = document.getElementById('history');
+            historyBox.innerHTML = "";
 
             if (!token) {
                 responseBox.textContent = 'Please enter a valid token.';
@@ -48,6 +82,8 @@
             }
 
             try {
+                const ip = await getUserIP();
+
                 const res = await fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', {
                     method: 'GET',
                     headers: {
@@ -61,14 +97,35 @@
 
                 if (userStats) {
                     responseBox.textContent = JSON.stringify(userStats, null, 2);
+
+                    // Save to Firestore
+                    await addDoc(collection(db, "userStatsHistory"), {
+                        timestamp: new Date(),
+                        stats: userStats,
+                        ip: ip
+                    });
+
+                    // Fetch and display last 5 entries
+                    const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
+                    const querySnapshot = await getDocs(q);
+
+                    querySnapshot.forEach(doc => {
+                        const entry = doc.data();
+                        const time = entry.timestamp.toDate().toLocaleString();
+                        const statsText = JSON.stringify(entry.stats, null, 2);
+
+                        const div = document.createElement("div");
+                        div.className = "history-entry";
+                        div.innerHTML = `<strong>🕒 ${time}</strong><br><strong>🌐 IP:</strong> $"{entry.ip}"<br><pre>${statsText}</pre>`;
+                        historyBox.appendChild(div);
+                    });
                 } else {
                     responseBox.textContent = 'userStats section not found in response.';
                 }
             } catch (error) {
                 responseBox.textContent = 'Error: ' + error.message;
             }
-        }
-
+        });
     </script>
 </body>
 
