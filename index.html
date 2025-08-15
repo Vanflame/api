@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Immutable API Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        input,
+        textarea,
+        button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+        }
+
+        #response {
+            white-space: pre-wrap;
+            background: #f4f4f4;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Immutable API Request</h2>
+    <label for="auth">Authorization Token:</label>
+    <textarea id="auth" rows="6" placeholder="Paste your JWT token here..."></textarea>
+
+    <button onclick="sendRequest()">Send Request</button>
+
+    <h3>Response:</h3>
+    <div id="response">Waiting for request...</div>
+
+    <script>
+        async function sendRequest() {
+            const token = document.getElementById('auth').value.trim();
+            const responseBox = document.getElementById('response');
+
+            if (!token) {
+                responseBox.textContent = 'Please enter a valid token.';
+                return;
+            }
+
+            try {
+                const res = await fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                const userStats = data.userStats;
+
+                if (userStats) {
+                    responseBox.textContent = JSON.stringify(userStats, null, 2);
+                } else {
+                    responseBox.textContent = 'userStats section not found in response.';
+                }
+            } catch (error) {
+                responseBox.textContent = 'Error: ' + error.message;
+            }
+        }
+
+    </script>
+</body>
+
+</html>
