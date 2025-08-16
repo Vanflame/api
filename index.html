@@ -172,7 +172,7 @@
             const historyBox = document.getElementById('history');
             historyBox.innerHTML = "";
 
-            const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
+            const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(500));
             const querySnapshot = await getDocs(q);
 
             querySnapshot.forEach(doc => {
@@ -323,3 +323,4 @@
 
 
 </html>
+
