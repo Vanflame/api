@@ -265,7 +265,7 @@
                 const tier = combined.userStats?.bucketName || 'N/A';
                 const logId = await generateLogId(token, progress, tier);
 
-                const q = query(collection(db, "userStatsHistory"), where("logId", "==", logId), limit(1));
+                const q = query(collection(db, "StatsHistory"), where("logId", "==", logId), limit(1));
                 const snapshot = await getDocs(q);
                 const alreadyLoggedFlag = !snapshot.empty;
 
@@ -319,6 +319,7 @@
         renderHistory();
     </script>
 </body>
+
 
 
 </html>
