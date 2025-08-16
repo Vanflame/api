@@ -232,7 +232,7 @@
         ]);
 
         if (!statsRes.ok || !eligibilityRes.ok) {
-          responseBox.textContent = '❌ API error: One or both requests failed.';
+          responseBox.textContent = 'Invalid or Expired Authentication token';
           return;
         }
 
@@ -300,5 +300,6 @@
     renderHistory();
   </script>
 </body>
+
 
 </html>
