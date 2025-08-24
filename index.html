@@ -342,7 +342,7 @@
         const deviceType = getDeviceType();
         const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json, text/plain, */*', 'Access-Control-Allow-Origin': '*', 'Origin': 'https://play.immutable.com', 'Referer': 'https://play.immutable.com/', 'User-Agent': userAgent };
         const [statsRes, eligibilityRes] = await Promise.all([
-          fetch('https://api.immutable.com/v2/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
+          fetch('https://api.immutable.com/v3/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
           fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
         ]);
         if (!statsRes.ok || !eligibilityRes.ok) { responseBox.textContent = 'Invalid or Expired Authentication token'; loader.style.display = 'none'; return; }
@@ -545,5 +545,6 @@
 
   </script>
 </body>
+
 
 </html>
