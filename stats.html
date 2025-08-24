@@ -6,14 +6,31 @@
   <title>Stats Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    :root {
+      --bg: #0f1320;
+      --card: #151a2b;
+      --muted: #aab3c5;
+      --text: #e8ecf3;
+      --accent: #7aa2ff;
+      --good: #2fbf71;
+      --bad: #ff5c5c;
+      --chip: #1b2240;
+      --border: #27314f;
+      --shadow: 0 4px 12px rgba(0, 0, 0, .25);
+      --radius: 12px;
+    }
+
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
-      background: #f4f4f4;
+      background: var(--bg);
+      color: var(--text);
     }
 
-    h1 {
-      margin-bottom: 20px;
+    h1,
+    h3,
+    p {
+      color: var(--text);
     }
 
     .tabs {
@@ -24,22 +41,27 @@
 
     .tab-btn {
       padding: 10px 20px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      background: #fff;
+      background: var(--card);
+      color: var(--text);
       cursor: pointer;
       font-size: 16px;
-      /* match index.html */
       font-family: Arial, sans-serif;
-      /* match font */
+      transition: all 0.2s ease-in-out;
+    }
+
+    .tab-btn:hover {
+      background: #1a2244;
+      /* hover tone from checker */
     }
 
     .tab-btn.active {
-      border-color: #4a90e2;
+      border-color: var(--accent);
+      color: var(--accent);
       font-weight: bold;
-      box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2) inset;
+      box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.3) inset;
     }
-
 
     .tab-content {
       display: none;
@@ -59,10 +81,10 @@
     .overview-card {
       flex: 1;
       min-width: 150px;
-      background: #fff;
+      background: var(--card);
       padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow);
       text-align: center;
     }
 
@@ -73,10 +95,11 @@
     }
 
     .chart-card {
-      background: #fff;
+      background: var(--card);
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
     }
 
     canvas {
@@ -88,25 +111,35 @@
     }
 
     .scheme-item {
-      background: #fff;
+      background: var(--card);
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow);
       cursor: pointer;
+      transition: background 0.2s ease;
+      border: 1px solid var(--border);
+    }
+
+    .scheme-item:hover {
+      background: #1a2244;
     }
 
     .scheme-item strong {
       display: block;
+      color: var(--accent);
     }
 
     .accounts {
       display: none;
       margin-top: 5px;
       font-size: 0.9em;
-      color: #333;
+      color: var(--muted);
     }
   </style>
+
+
+
   <script src="https://unpkg.com/lucide@latest"></script>
 
 </head>
@@ -117,6 +150,7 @@
   <div class="tabs">
     <button id="tabImmutable" class="tab-btn active">Immutable Stats Overview</button>
     <button id="tabGems" class="tab-btn">Gems Stats Overview</button>
+
     <a href="index.html"><button id="tabBack" class="tab-btn"> &#x1F860; Go back to cheker</button></a>
 
   </div>
