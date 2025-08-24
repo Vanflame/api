@@ -347,16 +347,50 @@
         ]);
         if (!statsRes.ok || !eligibilityRes.ok) { responseBox.textContent = 'Invalid or Expired Authentication token'; loader.style.display = 'none'; return; }
         const statsData = await statsRes.json(); const eligibilityData = await eligibilityRes.json();
-        const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
-        const progress = combined.userStats?.progressPercentage || 0;
-        const tier = combined.userStats?.bucketName || 'N/A';
+        // const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
+        // const progress = combined.userStats?.progressPercentage || 0;
+        // const tier = combined.userStats?.bucketName || 'N/A';
+
+        // ✅ Collect completed quest names
+        let completedQuests = [];
+        let totalCompleted = 0;
+        if (statsData.games && Array.isArray(statsData.games)) {
+          statsData.games.forEach(game => {
+            if (game.quests && Array.isArray(game.quests)) {
+              game.quests.forEach(q => {
+                if (q.timesCompleted === 1) {
+                  completedQuests.push(q.name); // push the quest name
+                  totalCompleted++;
+                }
+              });
+            }
+          });
+        }
+
+        // ✅ Remap predicted response into old structure
+        const combined = {
+          userStats: {
+            progressPercentage: statsData.percentageToNextTier || 0,   // old "progressPercentage"
+            bucketName: statsData.predictedRarity || "N/A",            // old "bucketName"
+            totalInGameQuestsCompleted: totalCompleted,                // old "totalInGameQuestsCompleted"
+            targetQuestsCompleted: completedQuests                     // old "targetQuestsCompleted"
+          },
+          eligibility: eligibilityData || {}
+        };
+
+        const progress = combined.userStats.progressPercentage;
+        const tier = combined.userStats.bucketName;
+        const quests = combined.userStats.targetQuestsCompleted;
+
         const logId = await generateLogId(token, progress, tier);
         const q = query(collection(db, "StatsHistory"), where("logId", "==", logId), limit(1));
         const snapshot = await getDocs(q);
         const alreadyLoggedFlag = !snapshot.empty;
         const tierClass = getTierClass(tier);
-        const quests = combined.userStats.targetQuestsCompleted || [];
+        // const quests = combined.userStats.targetQuestsCompleted || [];
         const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
+
+
         if (alreadyLoggedFlag) {
           responseBox.textContent = 'There are no new changes'; loader.style.display = 'none';
           alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
