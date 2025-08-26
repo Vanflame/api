@@ -170,6 +170,28 @@
     a {
       text-decoration: none;
     }
+
+    .progress-container {
+      width: 100%;
+      background: #0b1024;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 16px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    #questProgressText {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
   </style>
 </head>
 
@@ -195,13 +217,12 @@
         <button onclick="sendRequest('survival')">Send 7min Survive</button>
 
         <div id="loader" style="display:none;">
-          <svg width="50" height="50" viewBox="0 0 50 50">
-            <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
-              <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                repeatCount="indefinite" />
-            </circle>
-          </svg>
+          <div class="progress-container">
+            <div class="progress-bar" id="questProgressBar"></div>
+          </div>
+          <div id="questProgressText"></div>
         </div>
+
         <div id="response"></div>
       </div>
 
@@ -263,12 +284,16 @@
 
     const response = document.getElementById("response");
     const loader = document.getElementById("loader");
+    const progressBar = document.getElementById("questProgressBar");
+    const progressText = document.getElementById("questProgressText");
 
     // ✅ Quest Submission
     window.sendRequest = async function (type) {
       const imx = document.getElementById("imxInput").value.trim();
       response.innerHTML = "";
       loader.style.display = 'block';
+      progressBar.style.width = "0%";
+      progressText.textContent = "Starting...";
 
       if (!imx.startsWith("0x") || imx.length !== 42) {
         response.innerHTML = `<div class="red">Please enter valid IMX zkevm address</div>`;
@@ -282,15 +307,37 @@
             type === 'survival' ? 'survival-time' : ''
         }/${imx}`;
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const docId = btoa(`${type}_${imx}`);
-      const docRef = doc(db, "questRequests", docId);
-      const existing = await getDoc(docRef);
-
-      if (existing.exists()) {
-        response.innerHTML = `<div class="red">Already submitted this quest for this IMX address.</div>`;
+      // 🔹 Quest-specific doc (to block resubmitting the same quest type)
+      const questDocId = btoa(`${type}_${imx}`);
+      const questDocRef = doc(db, "questRequests", questDocId);
+      const questDoc = await getDoc(questDocRef);
+      if (questDoc.exists()) {
+        response.innerHTML = `<div class="red">❌ Already submitted this quest for this IMX address.</div>`;
         loader.style.display = 'none';
         return;
       }
+
+      // 🔹 Global cooldown doc (to block all quests for 3min)
+      const walletDocId = btoa(`cooldown_${imx}`);
+      const walletDocRef = doc(db, "questRequests", walletDocId);
+      const walletDoc = await getDoc(walletDocRef);
+
+      if (walletDoc.exists()) {
+        const lastTime = walletDoc.data().timestamp || 0;
+        const now = Date.now();
+        const diff = now - lastTime;
+        const cooldown = 60000; // 1 minute
+
+        if (diff < cooldown) {
+          const remaining = Math.ceil((cooldown - diff) / 1000);
+          const mins = Math.floor(remaining / 60);
+          const secs = remaining % 60;
+          response.innerHTML = `<div class="red">⏳ Please wait ${mins}m ${secs}s before submitting again.</div>`;
+          loader.style.display = 'none';
+          return;
+        }
+      }
+
 
       const ip = await getIP();
       const headers = {
@@ -301,7 +348,17 @@
       };
 
       try {
+        // Progress step 1
+        progressBar.style.width = "30%";
+        progressText.textContent = "Preparing request...";
+        await new Promise(r => setTimeout(r, 500));
+
         const res = await fetch(proxyUrl, { method: "POST", headers, body: JSON.stringify({}) });
+
+        // Progress step 2
+        progressBar.style.width = "60%";
+        progressText.textContent = "Waiting for response...";
+
         if (!res.ok) {
           const text = await res.text();
           response.innerHTML = `<div class="red">Error ${res.status}: ${text || res.statusText}</div>`;
@@ -310,8 +367,17 @@
         }
 
         const result = await res.text();
-        await setDoc(docRef, { url, timestamp: Date.now(), type, imx, ip, response: result });
-        response.innerHTML = `<div class="green">Success: Quest submitted!</div>`;
+
+        // Progress step 3
+        progressBar.style.width = "100%";
+        progressText.textContent = "Saving results...";
+
+        // Save quest-specific doc
+        await setDoc(questDocRef, { url, timestamp: Date.now(), type, imx, ip, response: result });
+        // Save wallet cooldown doc
+        await setDoc(walletDocRef, { timestamp: Date.now() });
+
+        response.innerHTML = `<div class="green">✅ Success: Quest submitted!</div>`;
         loadHistory();
       } catch (err) {
         response.innerHTML = `<div class="red">Error: ${err.message}</div>`;
@@ -320,10 +386,9 @@
       }
     };
 
-    // ✅ History
+    // ✅ History (limit to 50)
     async function loadHistory() {
-      const q = query(collection(db, "questRequests"), orderBy("timestamp", "desc"),
-        limit(10));
+      const q = query(collection(db, "questRequests"), orderBy("timestamp", "desc"), limit(50));
       const snapshot = await getDocs(q);
       const container = document.getElementById("entries");
       container.innerHTML = "";
@@ -331,20 +396,20 @@
         const data = doc.data();
         const time = new Date(data.timestamp).toLocaleString();
         container.innerHTML += `
-          <div class="history-entry">
-            <strong>Type:</strong> ${data.type}<br>
-            <strong>IMX:</strong> ${data.imx}<br>
-            <strong>IP:</strong> ${data.ip}<br>
-            <strong>URL:</strong> ${data.url}<br>
-            <strong>Time:</strong> ${time}<br>
-            <strong>Response:</strong> ${data.response}
-          </div>
-        `;
+        <div class="history-entry">
+          <strong>Type:</strong> ${data.type}<br>
+          <strong>IMX:</strong> ${data.imx}<br>
+          <strong>IP:</strong> ${data.ip}<br>
+          <strong>URL:</strong> ${data.url}<br>
+          <strong>Time:</strong> ${time}<br>
+          <strong>Response:</strong> ${data.response}
+        </div>
+      `;
       });
     }
     loadHistory();
 
-    // ✅ Stats
+    // ✅ Stats (unchanged)
     async function loadStats() {
       const snapshot = await getDocs(collection(db, "questRequests"));
       const total = snapshot.size;
@@ -377,11 +442,11 @@
 
       // Overview
       document.getElementById("overview").innerHTML = `
-        <h3>Overview</h3>
-        <p><strong>Total submissions:</strong> ${total}</p>
-        <p><strong>Unique IMX addresses:</strong> ${imxSet.size}</p>
-        <p><strong>Unique IP addresses:</strong> ${Object.keys(ipMap).length}</p>
-      `;
+      <h3>Overview</h3>
+      <p><strong>Total submissions:</strong> ${total}</p>
+      <p><strong>Unique IMX addresses:</strong> ${imxSet.size}</p>
+      <p><strong>Unique IP addresses:</strong> ${Object.keys(ipMap).length}</p>
+    `;
 
       // Duplicate IPs
       const duplicates = Object.entries(ipMap)
@@ -394,10 +459,10 @@
       } else {
         duplicates.forEach(d => {
           dupHTML += `
-            <details>
-              <summary>${d.ip} → ${d.count} IMX addresses</summary>
-              <div>${d.imxList.join("<br>")}</div>
-            </details>`;
+          <details>
+            <summary>${d.ip} → ${d.count} IMX addresses</summary>
+            <div>${d.imxList.join("<br>")}</div>
+          </details>`;
         });
       }
       document.getElementById("duplicateIPs").innerHTML = dupHTML;
@@ -469,6 +534,8 @@
       loadStats();
     });
   </script>
+
+
 </body>
 
 </html>
