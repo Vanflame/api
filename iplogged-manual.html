@@ -230,11 +230,14 @@
     <div class="nav">
         <a href="index.html"><button class="tab-btn">← Back to Main</button></a>
         <button class="tab-btn" disabled>Web Fingerprints</button>
+        <a href="https://pixelscan.net/fingerprint-check" target="_blank" rel="noopener">
+            <button class="tab-btn">PixelScan ↗</button>
+        </a>
         <a href="https://play.immutable.com/rewards/" target="_blank" rel="noopener">
             <button class="tab-btn">Immutable Rewards ↗</button>
         </a>
-        <a href="https://pixelscan.net/fingerprint-check" target="_blank" rel="noopener">
-            <button class="tab-btn">PixelScan ↗</button>
+        <a href="https://twitter.com/i/flow/signup" target="_blank" rel="noopener">
+            <button class="tab-btn">Twitter Singup ↗</button>
         </a>
     </div>
 
@@ -250,6 +253,15 @@
                 <button id="btnParseRaw" class="btn mt">Compare & Save</button>
             </div>
 
+            <!-- <div class="card">
+                <h2>Bulk Import IPs</h2>
+                <p class="muted">Click once to import all predefined IPs into the <code>FingerprintLogs</code>
+                    collection.</p>
+                <button id="btnImportIPs" class="btn">🚀 Import IPs</button>
+                <div id="importStatus" class="muted" style="margin-top:10px;"></div>
+            </div> -->
+
+
 
             <div id="loader" style="display:none; margin-top:10px;">
                 <div class="progress-container">
@@ -259,7 +271,15 @@
             </div>
 
             <div id="results" class="card" style="display:none;">
-                <div class="kv"><strong>IP:</strong> <span id="ip" class="mono"></span></div>
+                <div class="kv">
+                    <strong>IP:</strong>
+                    <span id="ip" class="mono"></span>
+                    <button id="copyIpBtn" class="btn"
+                        style="width:auto; padding:4px 8px; margin-left:8px; font-size:0.8rem;">
+                        📋 Copy
+                    </button>
+                </div>
+
                 <div class="kv"><strong>Canvas:</strong> <span id="canvas" class="mono"></span></div>
                 <div class="kv"><strong>WebGL:</strong> <span id="webgl" class="mono"></span></div>
                 <div class="kv"><strong>Audio:</strong> <span id="audio" class="mono"></span></div>
@@ -495,7 +515,81 @@
                 setTimeout(() => { bar.style.width = '0%'; ptext.textContent = ''; loader.style.display = 'none'; }, 600);
             }
         });
+        const copyIpBtn = document.getElementById('copyIpBtn');
+
+        copyIpBtn.addEventListener('click', () => {
+            const ip = ipEl.textContent;
+            if (!ip) return;
+            navigator.clipboard.writeText(ip).then(() => {
+                copyIpBtn.textContent = "✅ Copied!";
+                setTimeout(() => copyIpBtn.textContent = "📋 Copy", 1500);
+            }).catch(err => {
+                console.error("Failed to copy IP:", err);
+            });
+        });
+
+
+        // // --- Static IP list ---
+        // const staticIPs = [
+        //     "209.35.163.116",
+        //     "110.54.161.166",
+        //     "110.54.179.26",
+        //     "110.54.149.69",
+        //     "110.54.179.224",
+        //     "110.54.161.28",
+        //     "209.35.160.139",
+        //     "110.54.160.251",
+        //     "110.54.145.129",
+        //     "110.54.145.38",
+        //     "112.198.70.51",
+        //     "209.35.161.172",
+        //     "110.54.135.81",
+        //     "110.54.135.172",
+        //     "110.54.133.111",
+        //     "209.35.160.195",
+        //     "110.54.161.214",
+        //     "110.54.132.207",
+        //     "110.54.144.217",
+        //     "112.198.71.19",
+        //     "110.54.133.213",
+        //     "110.54.144.4",
+        //     "110.54.134.92"
+        // ];
+
+        // // --- UI refs for bulk import ---
+        // const btnImportIPs = document.getElementById("btnImportIPs");
+        // const importStatus = document.getElementById("importStatus");
+
+        // // --- Import into FingerprintLogs ---
+        // async function bulkImportIPs() {
+        //     importStatus.textContent = "⏳ Importing into FingerprintLogs...";
+        //     try {
+        //         for (const ip of staticIPs) {
+        //             await addDoc(collection(db, "FingerprintLogs"), {
+        //                 ip,
+        //                 canvas: null,
+        //                 webgl: null,
+        //                 audio: null,
+        //                 webglVendor: null,
+        //                 webglRenderer: null,
+        //                 webglVersion: null,
+        //                 combined: null,
+        //                 userAgent: "static-import",
+        //                 timestamp: new Date()
+        //             });
+        //         }
+        //         importStatus.textContent = "✅ Imported " + staticIPs.length + " IPs into FingerprintLogs.";
+        //     } catch (err) {
+        //         console.error(err);
+        //         importStatus.textContent = "❌ Error: " + err.message;
+        //     }
+        // }
+
+        // // --- Wire up ---
+        // btnImportIPs?.addEventListener("click", bulkImportIPs);
+
     </script>
+
 
 </body>
 
