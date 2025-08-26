@@ -180,6 +180,28 @@
       font-size: 0.9rem;
       color: var(--muted);
     }
+
+    .btn-group {
+      float: right;
+    }
+
+    .cancel-btn,
+    .send-now-btn {
+      margin-left: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .cancel-btn {
+      background: #f44336;
+      color: white;
+    }
+
+    .send-now-btn {
+      background: #2196f3;
+      color: white;
+    }
   </style>
 </head>
 
@@ -480,16 +502,42 @@
           if (task.status === "error") statusText = "❌ Error, will retry when active";
         }
 
+        // 🔹 Added Send Now button next to Cancel
         container.innerHTML += `
       <div class="pending-entry">
         <strong>Type:</strong> ${task.type}<br>
         <strong>IMX:</strong> ${task.imx}<br>
         <span id="${elId}">${statusText}</span>
-       <button onclick="cancelTask('${task.id}')" style="margin-top:6px;width:auto;padding:4px 8px;">❌ Cancel</button>
+        <div style="margin-top:6px; display:flex; gap:6px; justify-content:flex-end;">
+          <button onclick="cancelTask('${task.id}')" style="width:auto;padding:4px 8px;">❌ Cancel</button>
+          <button onclick="sendNowTask('${task.id}')" style="width:auto;padding:4px 8px;background:#2196f3;color:white;border:none;border-radius:4px;">🚀 Send Now</button>
         </div>
+      </div>
     `;
       });
     }
+
+    window.sendNowTask = async function (taskId) {
+      const task = queue.find(t => t.id === taskId);
+      if (!task) return;
+
+      try {
+        // Remove from pending queue in Firestore + local
+        await deleteDoc(doc(db, "pendingQueue", task.id));
+        queue = queue.filter(t => t.id !== task.id);
+        renderPending();
+
+        // 🚀 Execute immediately (skip cooldown)
+        await sendRequest(task.type, task.imx);
+
+        response.innerHTML = `<div class="green">🚀 Sent immediately: ${task.type} for ${task.imx}</div>`;
+      } catch (e) {
+        console.error("Send Now failed:", e);
+        response.innerHTML = `<div class="red">❌ Send Now failed</div>`;
+      }
+    }
+
+
 
 
     // ✅ Cancel and remove a task from queue + Firestore
@@ -710,8 +758,9 @@
       btnQuests.classList.remove('active');
       loadStats();
     });
+
+
   </script>
 </body>
-
 
 </html>
