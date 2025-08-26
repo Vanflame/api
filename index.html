@@ -214,6 +214,44 @@
     .hidden {
       display: none;
     }
+
+
+    .game-dropdown {
+      margin: 12px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--card);
+    }
+
+    .game-header {
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1a1f33;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .game-header:hover {
+      background: #232a44;
+    }
+
+    .quest-list {
+      display: none;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .quest-list ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .quest-list li {
+      margin: 4px 0;
+    }
   </style>
 </head>
 
@@ -258,6 +296,7 @@
         </select>
 
         <div id="response"></div>
+        <div id="availableQuests"></div>
         <div id="alreadyLogged"></div>
         <div id="history"></div>
       </div>
@@ -530,6 +569,48 @@
             }
           });
         }
+
+        // ✅ Collect available quests (canStillComplete = true)
+        const availableBox = document.getElementById("availableQuests");
+        availableBox.innerHTML = "<h3>🧩 Available Quests Account Quest</h3>";
+
+        if (statsData.games && Array.isArray(statsData.games)) {
+          statsData.games.forEach(game => {
+            if (game.quests && Array.isArray(game.quests)) {
+              const availableQuests = game.quests.filter(q => q.canStillCompleteThisPeriod);
+
+
+              if (availableQuests.length > 0) {
+                // create dropdown
+                const container = document.createElement("div");
+                container.className = "game-dropdown";
+
+                const header = document.createElement("div");
+                header.className = "game-header";
+                header.innerHTML = `
+  <span>
+    <img src="${game.icon}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">
+    ${game.name}
+  </span>
+  <span>▼</span>
+`;
+
+                const list = document.createElement("div");
+                list.className = "quest-list";
+                list.innerHTML = `<ul>${availableQuests.map(q => `<li>${q.name}</li>`).join("")}</ul>`;
+
+                header.addEventListener("click", () => {
+                  list.style.display = list.style.display === "block" ? "none" : "block";
+                });
+
+                container.appendChild(header);
+                container.appendChild(list);
+                availableBox.appendChild(container);
+              }
+            }
+          });
+        }
+
 
 
         // ✅ Remap predicted response into old structure
