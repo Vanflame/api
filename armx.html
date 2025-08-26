@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Quest Completion Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1320;
+      --card: #151a2b;
+      --muted: #aab3c5;
+      --text: #e8ecf3;
+      --accent: #7aa2ff;
+      --good: #2fbf71;
+      --bad: #ff5c5c;
+      --chip: #1b2240;
+      --border: #27314f;
+      --shadow: 0 4px 12px rgba(0, 0, 0, .25);
+      --radius: 12px;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #131a2b, #0f1320);
+      color: var(--text);
+    }
+
+    /* Navbar */
+    .nav {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      background: #101529;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .tab-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--accent);
+      background: #1a2244;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Wrapper */
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 14px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    input {
+      width: 97%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0b1024;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--chip);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      background: #1a2244;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    #loader {
+      display: flex;
+      justify-content: center;
+      margin: 12px 0;
+    }
+
+    #response {
+      font-weight: 500;
+      font-size: 1rem;
+      margin-top: 12px;
+    }
+
+    #response .green {
+      color: var(--good);
+    }
+
+    #response .red {
+      color: var(--bad);
+    }
+
+    .history-entry {
+      border: 1px solid var(--border);
+      background: #131a36;
+      padding: 8px;
+      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+    }
+
+    .chart-container {
+      margin-top: 20px;
+    }
+
+    canvas {
+      width: 100% !important;
+      max-height: 350px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navigation -->
+  <div class="nav">
+    <button id="btnQuests" class="tab-btn active">Quest Tracker</button>
+    <button id="btnStats" class="tab-btn">Stats</button>
+  </div>
+
+  <div class="wrap">
+    <!-- Quest Tracker -->
+    <div id="questsSection">
+      <div class="card">
+        <h2>Quest Completion Tracker</h2>
+        <label for="imxInput">IMX Wallet Address</label>
+        <input id="imxInput" type="text" placeholder="0x....">
+
+        <button onclick="sendRequest('boss')">Send Kill Boss</button>
+        <button onclick="sendRequest('mob')">Send Kill 50 Mobs</button>
+        <button onclick="sendRequest('score')">Send 14k Score</button>
+        <button onclick="sendRequest('survival')">Send 7min Survive</button>
+
+        <div id="loader" style="display:none;">
+          <svg width="50" height="50" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" stroke="gray" stroke-width="5" fill="none" stroke-linecap="round">
+              <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
+                repeatCount="indefinite" />
+            </circle>
+          </svg>
+        </div>
+        <div id="response"></div>
+      </div>
+
+      <div class="card">
+        <h2>📜 Submission History</h2>
+        <div id="entries"></div>
+      </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div id="statsSection" style="display:none;">
+      <div class="card" id="overview"></div>
+      <div class="card" id="duplicateIPs"></div>
+      <div class="card" id="topIPs"></div>
+      <div class="card chart-container">
+        <h3>Submissions by Hour</h3>
+        <canvas id="timeChart"></canvas>
+      </div>
+      <div class="card chart-container">
+        <h3>Quest Type Distribution</h3>
+        <canvas id="questTypeChart"></canvas>
+      </div>
+      <div class="card chart-container">
+        <h3>Unique IMX Submissions per Day</h3>
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
+      authDomain: "immutable-api.firebaseapp.com",
+      projectId: "immutable-api",
+      storageBucket: "immutable-api.firebasestorage.app",
+      messagingSenderId: "839008159453",
+      appId: "1:839008159453:web:7b4240a8f934e367afbd34",
+      measurementId: "G-Z6KBBBKCH6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function getIP() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+      } catch {
+        return "Unknown";
+      }
+    }
+
+    const response = document.getElementById("response");
+    const loader = document.getElementById("loader");
+
+    // ✅ Quest Submission
+    window.sendRequest = async function (type) {
+      const imx = document.getElementById("imxInput").value.trim();
+      response.innerHTML = "";
+      loader.style.display = 'block';
+
+      if (!imx.startsWith("0x") || imx.length !== 42) {
+        response.innerHTML = `<div class="red">Please enter valid IMX zkevm address</div>`;
+        loader.style.display = 'none';
+        return;
+      }
+
+      const url = `https://backend-15430359625.asia-southeast1.run.app/quest-completion/${type === 'boss' ? 'kill-boss' :
+        type === 'mob' ? 'kill-50-mobs' :
+          type === 'score' ? 'boss-score' :
+            type === 'survival' ? 'survival-time' : ''
+        }/${imx}`;
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const docId = btoa(`${type}_${imx}`);
+      const docRef = doc(db, "questRequests", docId);
+      const existing = await getDoc(docRef);
+
+      if (existing.exists()) {
+        response.innerHTML = `<div class="red">Already submitted this quest for this IMX address.</div>`;
+        loader.style.display = 'none';
+        return;
+      }
+
+      const ip = await getIP();
+      const headers = {
+        "Accept": "*/*",
+        "Content-Type": "application/json",
+        "x-api-key": "f89af413-58a1-4cae-8505-d56f49afc0ae",
+        "User-Agent": "ArmourX/++UE5+Release-5.5-CL-40574608 (http-eventloop) Windows/10.0.22631.1.768.64bit"
+      };
+
+      try {
+        const res = await fetch(proxyUrl, { method: "POST", headers, body: JSON.stringify({}) });
+        if (!res.ok) {
+          const text = await res.text();
+          response.innerHTML = `<div class="red">Error ${res.status}: ${text || res.statusText}</div>`;
+          loader.style.display = 'none';
+          return;
+        }
+
+        const result = await res.text();
+        await setDoc(docRef, { url, timestamp: Date.now(), type, imx, ip, response: result });
+        response.innerHTML = `<div class="green">Success: Quest submitted!</div>`;
+        loadHistory();
+      } catch (err) {
+        response.innerHTML = `<div class="red">Error: ${err.message}</div>`;
+      } finally {
+        loader.style.display = 'none';
+      }
+    };
+
+    // ✅ History
+    async function loadHistory() {
+      const q = query(collection(db, "questRequests"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      const container = document.getElementById("entries");
+      container.innerHTML = "";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const time = new Date(data.timestamp).toLocaleString();
+        container.innerHTML += `
+          <div class="history-entry">
+            <strong>Type:</strong> ${data.type}<br>
+            <strong>IMX:</strong> ${data.imx}<br>
+            <strong>IP:</strong> ${data.ip}<br>
+            <strong>URL:</strong> ${data.url}<br>
+            <strong>Time:</strong> ${time}<br>
+            <strong>Response:</strong> ${data.response}
+          </div>
+        `;
+      });
+    }
+    loadHistory();
+
+    // ✅ Stats
+    async function loadStats() {
+      const snapshot = await getDocs(collection(db, "questRequests"));
+      const total = snapshot.size;
+      const imxSet = new Set();
+      const ipMap = {};
+      const timeMap = {};
+      const typeMap = {};
+      const dailyMap = {};
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const ip = data.ip || "Unknown";
+        const imx = data.imx;
+        const time = new Date(data.timestamp);
+
+        imxSet.add(imx);
+
+        if (!ipMap[ip]) ipMap[ip] = new Set();
+        ipMap[ip].add(imx);
+
+        const hour = time.getHours();
+        timeMap[hour] = (timeMap[hour] || 0) + 1;
+
+        typeMap[data.type] = (typeMap[data.type] || 0) + 1;
+
+        const dateKey = time.toISOString().split("T")[0];
+        dailyMap[dateKey] = (dailyMap[dateKey] || new Set());
+        dailyMap[dateKey].add(imx);
+      });
+
+      // Overview
+      document.getElementById("overview").innerHTML = `
+        <h3>Overview</h3>
+        <p><strong>Total submissions:</strong> ${total}</p>
+        <p><strong>Unique IMX addresses:</strong> ${imxSet.size}</p>
+        <p><strong>Unique IP addresses:</strong> ${Object.keys(ipMap).length}</p>
+      `;
+
+      // Duplicate IPs
+      const duplicates = Object.entries(ipMap)
+        .filter(([ip, imxs]) => imxs.size > 1)
+        .map(([ip, imxs]) => ({ ip, count: imxs.size, imxList: Array.from(imxs) }));
+
+      let dupHTML = "<h3>Duplicate IPs</h3>";
+      if (duplicates.length === 0) {
+        dupHTML += "<p>✅ No duplicates found</p>";
+      } else {
+        duplicates.forEach(d => {
+          dupHTML += `
+            <details>
+              <summary>${d.ip} → ${d.count} IMX addresses</summary>
+              <div>${d.imxList.join("<br>")}</div>
+            </details>`;
+        });
+      }
+      document.getElementById("duplicateIPs").innerHTML = dupHTML;
+
+      // Top IPs
+      const topIPs = Object.entries(ipMap)
+        .map(([ip, imxs]) => ({ ip, count: imxs.size }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      let topHTML = "<h3>Top IPs</h3>";
+      topIPs.forEach(d => {
+        topHTML += `<div>${d.ip} → ${d.count} unique IMX</div>`;
+      });
+      document.getElementById("topIPs").innerHTML = topHTML;
+
+      // Chart: submissions by hour
+      const hours = Array.from({ length: 24 }, (_, i) => {
+        const suffix = i >= 12 ? "PM" : "AM";
+        const hour = i % 12 === 0 ? 12 : i % 12;
+        return `${hour} ${suffix}`;
+      });
+      const counts = hours.map((_, i) => timeMap[i] || 0);
+      new Chart(document.getElementById("timeChart"), {
+        type: "bar",
+        data: { labels: hours, datasets: [{ label: "Submissions", data: counts, backgroundColor: "#4a90e2" }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      // Quest type distribution
+      new Chart(document.getElementById("questTypeChart"), {
+        type: "pie",
+        data: {
+          labels: Object.keys(typeMap),
+          datasets: [{ data: Object.values(typeMap), backgroundColor: ["#4a90e2", "#50e3c2", "#f5a623", "#d9534f"] }]
+        }
+      });
+
+      // Daily unique IMX
+      const sortedDates = Object.keys(dailyMap).sort();
+      const dailyCounts = sortedDates.map(d => dailyMap[d].size);
+      new Chart(document.getElementById("dailyChart"), {
+        type: "line",
+        data: {
+          labels: sortedDates,
+          datasets: [{ label: "Unique IMX per Day", data: dailyCounts, borderColor: "#f56c42", fill: false }]
+        }
+      });
+    }
+
+    // Tabs
+    const btnQuests = document.getElementById('btnQuests');
+    const btnStats = document.getElementById('btnStats');
+    const questsSection = document.getElementById('questsSection');
+    const statsSection = document.getElementById('statsSection');
+
+    btnQuests.addEventListener('click', () => {
+      questsSection.style.display = 'block';
+      statsSection.style.display = 'none';
+      btnQuests.classList.add('active');
+      btnStats.classList.remove('active');
+    });
+
+    btnStats.addEventListener('click', () => {
+      questsSection.style.display = 'none';
+      statsSection.style.display = 'block';
+      btnStats.classList.add('active');
+      btnQuests.classList.remove('active');
+      loadStats();
+    });
+  </script>
+</body>
+
+</html>
