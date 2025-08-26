@@ -158,6 +158,18 @@
       width: 100% !important;
       max-height: 350px;
     }
+
+    #tabBack {
+      width: 160px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+
+    }
+
+    a {
+      text-decoration: none;
+    }
   </style>
 </head>
 
@@ -166,6 +178,7 @@
   <div class="nav">
     <button id="btnQuests" class="tab-btn active">Quest Tracker</button>
     <button id="btnStats" class="tab-btn">Stats</button>
+    <a href="index.html"><button id="tabBack" class="tab-btn"> 🡠 Go back to cheker</button></a>
   </div>
 
   <div class="wrap">
@@ -223,7 +236,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0fUKA2kpoW9hHEWKcRqxjX-m-ZBFRpVM",
@@ -309,7 +322,8 @@
 
     // ✅ History
     async function loadHistory() {
-      const q = query(collection(db, "questRequests"), orderBy("timestamp", "desc"));
+      const q = query(collection(db, "questRequests"), orderBy("timestamp", "desc"),
+        limit(10));
       const snapshot = await getDocs(q);
       const container = document.getElementById("entries");
       container.innerHTML = "";
