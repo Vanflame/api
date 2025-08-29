@@ -291,8 +291,8 @@
         <label for="weekFilter">Select Week</label>
         <select id="weekFilter">
           <option value="20">Week 20 (Aug 14 → Aug 21, 2025)</option>
-          <option value="21" selected>Week 21 (Aug 21 → Aug 28, 2025)</option>
-          <option value="22">Week 22 (Aug 28 → Sep 4, 2025)</option>
+          <option value="21">Week 21 (Aug 21 → Aug 28, 2025)</option>
+          <option value="22" selected>Week 22 (Aug 28 → Sep 4, 2025)</option>
         </select>
 
         <div id="response"></div>
@@ -572,7 +572,7 @@
 
         // ✅ Collect available quests (canStillComplete = true)
         const availableBox = document.getElementById("availableQuests");
-        availableBox.innerHTML = "<h3>🧩 Available Account Quest</h3>";
+        availableBox.innerHTML = "<h3>🧩 Available Quests Account Quest</h3>";
 
         if (statsData.games && Array.isArray(statsData.games)) {
           statsData.games.forEach(game => {
@@ -597,7 +597,31 @@
 
                 const list = document.createElement("div");
                 list.className = "quest-list";
-                list.innerHTML = `<ul>${availableQuests.map(q => `<li>${q.name}</li>`).join("")}</ul>`;
+                list.innerHTML = `<ul>${availableQuests.map(q => {
+                  let status = "";
+                  if (q.endDate) {
+                    const endUTC = new Date(q.endDate);
+                    // ✅ convert to local PH time string
+                    const options = {
+                      timeZone: "Asia/Manila",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    };
+                    const endPH = endUTC.toLocaleString("en-PH", options);
+
+                    const now = new Date();
+                    if (endUTC < now) {
+                      status = ` <span style="color:var(--bad);">(Ended ${endPH})</span>`;
+                    } else {
+                      status = ` <span style="color:var(--muted);">(Ends ${endPH})</span>`;
+                    }
+                  }
+                  return `<li>${q.name}${status}</li>`;
+                }).join("")}</ul>`;
+
 
                 header.addEventListener("click", () => {
                   list.style.display = list.style.display === "block" ? "none" : "block";
@@ -843,7 +867,6 @@
 
   </script>
 </body>
-
 
 
 </html>
