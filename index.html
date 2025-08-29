@@ -252,6 +252,59 @@
     .quest-list li {
       margin: 4px 0;
     }
+
+    /* Progress Bar Wrapper */
+    .tier-progress {
+      margin: 20px 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .tier-bar-container {
+      width: 100%;
+      height: 18px;
+      background: #2a2f45;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+      border: 1px solid var(--border);
+    }
+
+    .tier-bar {
+      height: 100%;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    .tier-common-bar {
+      background: #777;
+    }
+
+    .tier-uncommon-bar {
+      background: #2fbf71;
+    }
+
+    .tier-rare-bar {
+      background: #2d7ff9;
+    }
+
+    .tier-epic-bar {
+      background: #9b59b6;
+    }
+
+    .tier-legendary-bar {
+      background: goldenrod;
+    }
+
+    .tier-info {
+      font-size: 0.9rem;
+      margin-top: 6px;
+      color: var(--muted);
+    }
   </style>
 </head>
 
@@ -296,6 +349,14 @@
         </select>
 
         <div id="response"></div>
+        <div id="tierProgressBox" class="tier-progress hidden">
+          <div id="tierTitle">NEXT DRAW PROJECTION</div>
+          <div class="tier-bar-container">
+            <div id="tierBar" class="tier-bar"></div>
+          </div>
+          <div id="tierStats" class="tier-info"></div>
+        </div>
+
         <div id="availableQuests"></div>
         <div id="alreadyLogged"></div>
         <div id="history"></div>
@@ -481,35 +542,61 @@
         const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
         const div = document.createElement("div");
         div.className = "history-entry";
+        const hasWarning = !rules.is_kyc_exempt || !rules.is_not_sybil || !rules.is_not_sanctioned;
+
         div.innerHTML = `
-          <strong>🕒 ${time}</strong><br>
-          <strong>🌐 IP:</strong> ${entry.ip}<br>
-          <strong>🧭 User Agent:</strong> ${entry.userAgent || 'Unknown'}<br>
-          <strong>📱 Device Type:</strong> ${entry.deviceType || 'Unknown'}<br><br>
-          <strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
-          <strong>📊 Progress Percentage:</strong> ${stats.progressPercentage || 0}%<br>
-          <strong>✅ Total Completed:</strong> ${stats.totalInGameQuestsCompleted || 0}<br>
-          <strong>🧩 Quests Completed:</strong> ${questList}<br><br>
-          <strong>🔐 KYC:</strong> ${rules.is_kyc_exempt ? '✅ Exempt' : '❌ Not Exempt'}<br>
-          <strong>🧠 Sybil:</strong> ${rules.is_not_sybil ? '✅ Clean' : '❌ Suspected'}<br>
-          <strong>🚫 Sanctioned:</strong> ${rules.is_not_sanctioned ? '✅ Clear' : '❌ Sanctioned'}<br>
-          <strong>🎮 Played Games:</strong> ${rules.have_played_any_in_game_quest ? '✅ Yes' : '❌ No'}<br>
-          <strong>🔗 Linked Social:</strong> ${rules.have_linked_any_social_media ? '✅ Yes' : '❌ No'}<br>
-          <strong>📞 Verified Phone:</strong> ${rules.have_verified_phone ? '✅ Yes' : '❌ No'}<br>`;
+  <div style="margin-bottom:6px; font-size:0.85rem; color:var(--muted);">
+    🕒 ${time} — 🌐 ${entry.ip} — 📱 ${entry.deviceType || 'Unknown'}
+  </div>
+
+  <div style="margin-bottom:8px;">
+    <strong>🎯 Tier:</strong> <span class="${tierClass}">${tier}</span>
+  </div>
+
+  <div style="text-align:center; margin:6px 0;">
+    <div style="font-size:1.1rem; font-weight:700; margin-bottom:4px;">
+      <span class="${tierClass}">
+        ${entry.progressPercentage ?? stats.progressPercentage ?? 0}%
+      </span>
+    </div>
+
+    <div class="tier-bar-container" style="height:14px; margin-bottom:4px;">
+      <div class="tier-bar ${tierClass}-bar"
+           style="width:${entry.progressPercentage ?? stats.progressPercentage ?? 0}%; transition:width 0.6s ease;"></div>
+    </div>
+
+    <div style="font-size:0.85rem; color:var(--muted);">
+      ⭐ ${entry.weeklyPoints ?? stats.totalWeeklyPoints ?? 0} Weekly Points
+    </div>
+  </div>
+
+  <div style="margin-top:6px; font-size:0.9rem;">
+    <strong>✅ Completed:</strong> ${stats.totalInGameQuestsCompleted || 0}<br>
+    <strong>🧩 Quests:</strong> ${questList}
+  </div>
+
+  <div style="margin-top:6px; font-size:0.85rem; color:var(--muted);">
+    🔐 KYC: ${rules.is_kyc_exempt ? '✅' : '❌'} | 
+    🧠 Sybil: ${rules.is_not_sybil ? '✅' : '❌'} | 
+    🚫 Sanctioned: ${rules.is_not_sanctioned ? '✅' : '❌'}<br>
+    🎮 Played: ${rules.have_played_any_in_game_quest ? '✅' : '❌'} | 
+    🔗 Social: ${rules.have_linked_any_social_media ? '✅' : '❌'} | 
+    📞 Phone: ${rules.have_verified_phone ? '✅' : '❌'}
+  </div>
+
+  ${hasWarning ? `
+    <div style="margin-top:8px; padding:6px 10px; border-radius:6px; 
+                background:rgba(255,0,0,0.1); color:#ff4d4d; font-size:0.85rem; font-weight:600;">
+      ⚠️ Warning: One or more risk checks failed (KYC / Sybil / Sanctioned)
+    </div>
+  ` : ''}
+`;
+
+
+
+
         historyBox.appendChild(div);
       });
-      // Timeline summary
-      const timelineBox = document.createElement("div");
-      timelineBox.innerHTML = `<h3>📜 Timeline</h3>`;
-      querySnapshot.forEach(doc => {
-        const entry = doc.data();
-        const time = entry.timestamp?.toDate
-          ? entry.timestamp.toDate().toLocaleString()
-          : new Date(entry.timestamp).toLocaleString();
-        const quests = entry.stats.userStats?.targetQuestsCompleted || [];
-        timelineBox.innerHTML += `<div>🕒 ${time} → ${quests.length ? quests.join(", ") : "No quests"}</div>`;
-      });
-      historyBox.appendChild(timelineBox);
     }
 
 
@@ -784,6 +871,36 @@
         const questList = quests.length ? `<ul>${quests.map(q => `<li>${q}</li>`).join('')}</ul>` : '<em>No quests completed</em>';
 
 
+
+
+
+        // === Render Progress Bar ===
+        const tierBox = document.getElementById("tierProgressBox");
+        const tierBar = document.getElementById("tierBar");
+        const tierStats = document.getElementById("tierStats");
+        const tierTitle = document.getElementById("tierTitle");
+
+        tierBox.classList.remove("hidden");
+
+        // Pick color by tier
+        tierBar.className = "tier-bar";
+        switch (tier.toLowerCase()) {
+          case "common": tierBar.classList.add("tier-common-bar"); break;
+          case "uncommon": tierBar.classList.add("tier-uncommon-bar"); break;
+          case "rare": tierBar.classList.add("tier-rare-bar"); break;
+          case "epic": tierBar.classList.add("tier-epic-bar"); break;
+          case "legendary": tierBar.classList.add("tier-legendary-bar"); break;
+        }
+
+        // Set width to % progress
+        tierBar.style.width = `${progress}%`;
+
+        // Update text
+        tierTitle.innerHTML = `NEXT DRAW PROJECTION / <span class="${getTierClass(tier)}">${tier.toUpperCase()}</span>`;
+        tierStats.textContent = `${progress}% → ${statsData.weeklyPoints || 0} Weekly Points`;
+
+
+
         if (alreadyLoggedFlag) {
           responseBox.innerHTML = '<div class="red"> There are no new changes </div>';
           statsLoader.style.display = "none";
@@ -797,7 +914,18 @@
         statsProgressText.textContent = "Saving results...";
         await sleep(1000); // ⏳ show 80% for a moment
 
-        await addDoc(collection(db, "StatsHistory"), { authToken: token, ip, userAgent, deviceType, stats: combined, logId, timestamp: new Date() });
+        await addDoc(collection(db, "StatsHistory"), {
+          authToken: token,
+          ip,
+          userAgent,
+          deviceType,
+          stats: combined,
+          logId,
+          timestamp: new Date(),
+          weeklyPoints: statsData.weeklyPoints || 0,    // ⬅️ store points
+          progressPercentage: progress                  // ⬅️ store %
+        });
+
         statsLoader.style.display = "none";
         responseBox.innerHTML = '<div class="green">Request successfully!</div>';
         alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
