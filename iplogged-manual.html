@@ -236,9 +236,10 @@
         <a href="https://play.immutable.com/rewards/" target="_blank" rel="noopener">
             <button class="tab-btn">Immutable Rewards ↗</button>
         </a>
-        <a href="https://twitter.com/i/flow/signup" target="_blank" rel="noopener">
-            <button class="tab-btn">Twitter Singup ↗</button>
+        <a href="https://www.mightandmagicfates.com/" target="_blank" rel="noopener">
+            <button class="tab-btn">Fate and Magic Register ↗</button>
         </a>
+
     </div>
 
     <div class="wrap">
@@ -278,6 +279,10 @@
                         style="width:auto; padding:4px 8px; margin-left:8px; font-size:0.8rem;">
                         📋 Copy
                     </button>
+                    <button id="deleteCurrentBtn" class="btn mt" style="width:auto; padding:6px 12px; margin-top:12px;">
+                        🗑 Delete This Entry
+                    </button>
+
                 </div>
 
                 <div class="kv"><strong>Canvas:</strong> <span id="canvas" class="mono"></span></div>
@@ -297,6 +302,11 @@
             <h2>History (recent matches)</h2>
             <div id="history"></div>
         </div>
+        <div class="card">
+            <h2>Full History (latest 50)</h2>
+            <div id="fullHistory"></div>
+        </div>
+
     </div>
 
     <!-- Firebase + Logic -->
@@ -310,7 +320,9 @@
             where,
             orderBy,
             limit,
-            getDocs
+            getDocs,
+            deleteDoc,
+            doc
         } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
         // --- Firebase Config ---
@@ -326,8 +338,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- UI refs ---
+        // --- UI Refs ---
         const btnParseRaw = document.getElementById('btnParseRaw');
+        const deleteCurrentBtn = document.getElementById('deleteCurrentBtn');
         const loader = document.getElementById('loader');
         const bar = document.getElementById('bar');
         const ptext = document.getElementById('ptext');
@@ -339,16 +352,20 @@
         const audioEl = document.getElementById('audio');
         const combinedEl = document.getElementById('combined');
         const historyBox = document.getElementById('history');
+        const fullHistoryBox = document.getElementById('fullHistory'); // NEW
         const rawInputEl = document.getElementById('rawInput');
         const webglVendorEl = document.getElementById('webglVendor');
         const webglRendererEl = document.getElementById('webglRenderer');
         const webglVersionEl = document.getElementById('webglVersion');
 
-        // --- helpers ---
+        let lastSavedDocId = null; // To track saved doc
+
+        // --- Helpers ---
         function setProgress(p, text) {
             bar.style.width = p + '%';
             ptext.textContent = text || '';
         }
+
         async function sha256(str) {
             const enc = new TextEncoder();
             const data = enc.encode(str);
@@ -366,14 +383,12 @@
             }
         }
 
-        // --- Parse raw input block ---
         function parseRawInput(text) {
             const lookup = (label) => {
                 const regex = new RegExp(label + "\\s*([\\s\\S]*?)(?=\\n[A-Z]|$)", "i");
                 const match = text.match(regex);
                 return match ? match[1].trim() : "";
             };
-
             return {
                 canvas: lookup("Canvas hash"),
                 webgl: lookup("WebGL hash"),
@@ -387,10 +402,8 @@
         async function processInput(rawText) {
             loader.style.display = 'block';
             setProgress(10, 'Fetching IP…');
-
             const ip = await getIP();
             const parsed = parseRawInput(rawText);
-
             const combined = await sha256([ip, parsed.canvas, parsed.webgl, parsed.audio].join('|'));
 
             // Populate UI
@@ -411,16 +424,34 @@
         }
 
         async function saveToFirestore(payload) {
-            await addDoc(collection(db, "FingerprintLogs"), {
+            const docRef = await addDoc(collection(db, "FingerprintLogs"), {
                 ...payload,
                 userAgent: navigator.userAgent,
                 timestamp: new Date()
             });
+            return docRef.id;
         }
+
+        deleteCurrentBtn.addEventListener('click', async () => {
+            if (!lastSavedDocId) {
+                alert("No saved entry to delete.");
+                return;
+            }
+            if (!confirm("Are you sure you want to delete this entry?")) return;
+            try {
+                await deleteDoc(doc(db, "FingerprintLogs", lastSavedDocId));
+                alert("Current entry deleted!");
+                resultsCard.style.display = 'none';
+                lastSavedDocId = null;
+                await loadFullHistory(); // Refresh full history after delete
+            } catch (err) {
+                console.error("Failed to delete:", err);
+                alert("Failed to delete current entry.");
+            }
+        });
 
         async function findMatches({ ip, canvas, webgl, audio }) {
             const col = collection(db, "FingerprintLogs");
-
             const [ipSnap, canSnap, webSnap, audSnap] = await Promise.all([
                 getDocs(query(col, where('ip', '==', ip), orderBy('timestamp', 'desc'), limit(25))),
                 getDocs(query(col, where('canvas', '==', canvas), orderBy('timestamp', 'desc'), limit(25))),
@@ -428,17 +459,12 @@
                 getDocs(query(col, where('audio', '==', audio), orderBy('timestamp', 'desc'), limit(25))),
             ]);
 
-            const toList = (snap, label) => snap.docs.map(d => {
-                const data = d.data();
-                return {
-                    label,
-                    ip: data.ip,
-                    canvas: data.canvas,
-                    webgl: data.webgl,
-                    audio: data.audio,
-                    when: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp)
-                };
-            });
+            const toList = (snap, label) => snap.docs.map(d => ({
+                id: d.id,
+                label,
+                ...d.data(),
+                when: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : new Date(d.data().timestamp)
+            }));
 
             return {
                 ipMatches: toList(ipSnap, 'IP'),
@@ -450,22 +476,43 @@
 
         function renderHistoryLists(matches) {
             historyBox.innerHTML = '';
-            const any = matches.ipMatches.length + matches.canvasMatches.length + matches.webglMatches.length + matches.audioMatches.length;
+            const total = matches.ipMatches.length +
+                matches.canvasMatches.length +
+                matches.webglMatches.length +
+                matches.audioMatches.length;
 
-            if (!any) {
-                historyBox.textContent = 'No recent matching entries found.';
+            // Add summary at the top
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'card';
+            summaryCard.innerHTML = `<strong>${total} match${total !== 1 ? 'es' : ''} found</strong>`;
+            historyBox.appendChild(summaryCard);
+
+            if (!total) {
                 return;
             }
 
             const addGroup = (title, arr) => {
                 if (!arr.length) return;
-                const wrap = document.createElement('div');
-                wrap.className = 'history-entry';
-                const items = arr.map(e =>
-                    `🕒 ${e.when.toLocaleString()} — ${title} match — IP ${e.ip?.slice(0, 8) || 'Unknown'}…`
-                ).join('<br>');
-                wrap.innerHTML = `<strong>${title} Matches (${arr.length})</strong><br>${items}`;
-                historyBox.appendChild(wrap);
+                arr.forEach(e => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.id = `entry-${e.id}`;
+                    card.style.marginTop = '10px';
+                    card.innerHTML = `
+                <div style="font-weight:bold; margin-bottom:6px;">${title} Match</div>
+                <div>🕒 ${e.when.toLocaleString()}</div>
+                <div><strong>IP:</strong> ${e.ip || 'Unknown'}</div>
+                <div><strong>Canvas:</strong> ${e.canvas || 'N/A'}</div>
+                <div><strong>WebGL:</strong> ${e.webgl || 'N/A'}</div>
+                <div><strong>Audio:</strong> ${e.audio || 'N/A'}</div>
+                <div><strong>Combined:</strong> ${e.combined || 'N/A'}</div>
+                <button class="btn mt" style="width:auto; padding:6px 12px; margin-top:8px;"
+                    onclick="deleteEntry('${e.id}')">
+                    🗑 Delete
+                </button>
+            `;
+                    historyBox.appendChild(card);
+                });
             };
 
             addGroup('Canvas', matches.canvasMatches);
@@ -474,121 +521,103 @@
             addGroup('IP', matches.ipMatches);
         }
 
+
         function decideVerdict(matches) {
             const strong = matches.canvasMatches.length || matches.webglMatches.length || matches.audioMatches.length;
             const mild = !strong && matches.ipMatches.length;
-
             verdictEl.style.display = 'block';
             verdictEl.className = 'alert ' + (strong ? 'alert-strong' : mild ? 'alert-warn' : 'alert-ok');
-
-            if (strong) {
-                verdictEl.textContent = '🚨 Strong warning: Canvas and/or WebGL and/or Audio fingerprint matches were found in history.';
-            } else if (mild) {
-                verdictEl.textContent = '⚠️ Mild warning: Only the IP address matches previous records.';
-            } else {
-                verdictEl.textContent = '✅ No matches in history.';
-            }
+            verdictEl.textContent = strong
+                ? '🚨 Strong warning: Canvas and/or WebGL and/or Audio fingerprint matches were found in history.'
+                : mild
+                    ? '⚠️ Mild warning: Only the IP address matches previous records.'
+                    : '✅ No matches in history.';
         }
 
-        // --- Wire up ---
+        // --- Full History ---
+        async function loadFullHistory() {
+            const col = collection(db, "FingerprintLogs");
+            const snap = await getDocs(query(col, orderBy('timestamp', 'desc'), limit(50)));
+            fullHistoryBox.innerHTML = '';
+
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'card';
+            summaryCard.innerHTML = `<strong>Showing latest ${snap.size} of 50 entries</strong>`;
+            fullHistoryBox.appendChild(summaryCard);
+
+            if (snap.empty) {
+                fullHistoryBox.innerHTML += '<div class="card">No history yet.</div>';
+                return;
+            }
+
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const when = data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.id = `full-${docSnap.id}`;
+                card.style.marginTop = '10px';
+                card.innerHTML = `
+            <div style="font-weight:bold; margin-bottom:6px;">History Entry</div>
+            <div>🕒 ${when.toLocaleString()}</div>
+            <div><strong>IP:</strong> ${data.ip || 'Unknown'}</div>
+            <div><strong>Canvas:</strong> ${data.canvas || 'N/A'}</div>
+            <div><strong>WebGL:</strong> ${data.webgl || 'N/A'}</div>
+            <div><strong>Audio:</strong> ${data.audio || 'N/A'}</div>
+            <div><strong>Combined:</strong> ${data.combined || 'N/A'}</div>
+            <button class="btn mt" style="width:auto; padding:6px 12px; margin-top:8px;"
+                onclick="deleteEntry('${docSnap.id}', true)">
+                🗑 Delete
+            </button>
+        `;
+                fullHistoryBox.appendChild(card);
+            });
+        }
+
+        // --- Delete Entry (used by both sections) ---
+        window.deleteEntry = async function (docId, isFull = false) {
+            if (!confirm("Are you sure you want to delete this entry?")) return;
+            try {
+                await deleteDoc(doc(db, "FingerprintLogs", docId));
+                document.getElementById(isFull ? `full-${docId}` : `entry-${docId}`)?.remove();
+            } catch (err) {
+                console.error("Failed to delete:", err);
+                alert("Failed to delete entry.");
+            }
+        };
+
+        // --- Main Flow ---
         btnParseRaw.addEventListener('click', async () => {
             verdictEl.style.display = 'none';
             setProgress(0, '');
             try {
                 const payload = await processInput(rawInputEl.value);
-
                 setProgress(70, 'Comparing with history…');
                 const matches = await findMatches(payload);
                 decideVerdict(matches);
                 renderHistoryLists(matches);
-
                 setProgress(90, 'Saving to Firestore…');
-                await saveToFirestore(payload);
-
+                lastSavedDocId = await saveToFirestore(payload);
                 setProgress(100, 'Saved & Ready');
+                await loadFullHistory(); // Refresh after save
             } catch (err) {
                 console.error(err);
                 verdictEl.style.display = 'block';
                 verdictEl.className = 'alert alert-strong';
                 verdictEl.textContent = '❌ Failed to process input.';
             } finally {
-                setTimeout(() => { bar.style.width = '0%'; ptext.textContent = ''; loader.style.display = 'none'; }, 600);
+                setTimeout(() => {
+                    bar.style.width = '0%';
+                    ptext.textContent = '';
+                    loader.style.display = 'none';
+                }, 600);
             }
         });
-        const copyIpBtn = document.getElementById('copyIpBtn');
 
-        copyIpBtn.addEventListener('click', () => {
-            const ip = ipEl.textContent;
-            if (!ip) return;
-            navigator.clipboard.writeText(ip).then(() => {
-                copyIpBtn.textContent = "✅ Copied!";
-                setTimeout(() => copyIpBtn.textContent = "📋 Copy", 1500);
-            }).catch(err => {
-                console.error("Failed to copy IP:", err);
-            });
-        });
-
-
-        // // --- Static IP list ---
-        // const staticIPs = [
-        //     "209.35.163.116",
-        //     "110.54.161.166",
-        //     "110.54.179.26",
-        //     "110.54.149.69",
-        //     "110.54.179.224",
-        //     "110.54.161.28",
-        //     "209.35.160.139",
-        //     "110.54.160.251",
-        //     "110.54.145.129",
-        //     "110.54.145.38",
-        //     "112.198.70.51",
-        //     "209.35.161.172",
-        //     "110.54.135.81",
-        //     "110.54.135.172",
-        //     "110.54.133.111",
-        //     "209.35.160.195",
-        //     "110.54.161.214",
-        //     "110.54.132.207",
-        //     "110.54.144.217",
-        //     "112.198.71.19",
-        //     "110.54.133.213",
-        //     "110.54.144.4",
-        //     "110.54.134.92"
-        // ];
-
-        // // --- UI refs for bulk import ---
-        // const btnImportIPs = document.getElementById("btnImportIPs");
-        // const importStatus = document.getElementById("importStatus");
-
-        // // --- Import into FingerprintLogs ---
-        // async function bulkImportIPs() {
-        //     importStatus.textContent = "⏳ Importing into FingerprintLogs...";
-        //     try {
-        //         for (const ip of staticIPs) {
-        //             await addDoc(collection(db, "FingerprintLogs"), {
-        //                 ip,
-        //                 canvas: null,
-        //                 webgl: null,
-        //                 audio: null,
-        //                 webglVendor: null,
-        //                 webglRenderer: null,
-        //                 webglVersion: null,
-        //                 combined: null,
-        //                 userAgent: "static-import",
-        //                 timestamp: new Date()
-        //             });
-        //         }
-        //         importStatus.textContent = "✅ Imported " + staticIPs.length + " IPs into FingerprintLogs.";
-        //     } catch (err) {
-        //         console.error(err);
-        //         importStatus.textContent = "❌ Error: " + err.message;
-        //     }
-        // }
-
-        // // --- Wire up ---
-        // btnImportIPs?.addEventListener("click", bulkImportIPs);
-
+        // Load full history on page load
+        loadFullHistory();
     </script>
+
 
 
 </body>
