@@ -92,6 +92,82 @@
       font-size: 0.9rem;
     }
 
+    /* Toolbar design */
+    .toolbar {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .toolbar-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .compact {
+      max-width: 220px;
+    }
+
+    .btn-primary {
+      flex: 1 0 180px;
+    }
+
+    .btn-secondary {
+      margin-left: auto;
+    }
+
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch input {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 40px;
+      height: 22px;
+      background: #222a44;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      position: relative;
+      outline: none;
+      transition: background .2s ease;
+    }
+
+    .switch input:checked {
+      background: #2a4cff;
+      border-color: #2a4cff;
+    }
+
+    .switch input::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 3px;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left .2s ease;
+    }
+
+    .switch input:checked::after {
+      left: 21px;
+    }
+
+    .switch-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
     select,
     button {
       width: 100%;
@@ -102,6 +178,37 @@
       border: 1px solid var(--border);
       font-family: ui-monospace, Menlo, monospace;
       font-size: 0.9rem;
+    }
+
+    /* Inputs (date/time) */
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0b1024;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    input[type="datetime-local"]:focus,
+    input[type="date"]:focus,
+    input[type="time"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.15);
+    }
+
+    /* Calendar icon */
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(80%);
+      opacity: 0.8;
+      cursor: pointer;
     }
 
     textarea {
@@ -342,11 +449,32 @@
 
 
         <label for="weekFilter">Select Week</label>
-        <select id="weekFilter">
-          <option value="20">Week 20 (Aug 14 → Aug 21, 2025)</option>
-          <option value="21">Week 21 (Aug 21 → Aug 28, 2025)</option>
-          <option value="22" selected>Week 22 (Aug 28 → Sep 4, 2025)</option>
-        </select>
+        <select id="weekFilter"></select>
+
+        <div id="controls" class="toolbar">
+          <div class="toolbar-row">
+            <button id="refreshHistoryBtn" class="btn-primary">Refresh History</button>
+            <label class="switch">
+              <input type="checkbox" id="autoRefreshToggle">
+              <span class="switch-label">Auto-refresh</span>
+            </label>
+            <select id="autoRefreshInterval" class="compact">
+              <option value="60000">Every 1 min</option>
+              <option value="300000" selected>Every 5 min</option>
+              <option value="600000">Every 10 min</option>
+              <option value="1800000">Every 30 min</option>
+            </select>
+          </div>
+          <div class="toolbar-row">
+            <label class="switch">
+              <input type="checkbox" id="useCustomRange">
+              <span class="switch-label">Use custom date range</span>
+            </label>
+            <input type="datetime-local" id="customStart" class="compact">
+            <input type="datetime-local" id="customEnd" class="compact">
+            <button id="exportCsvBtn" class="btn-secondary">Export CSV</button>
+          </div>
+        </div>
 
         <div id="response"></div>
         <div id="tierProgressBox" class="tier-progress hidden">
@@ -403,8 +531,21 @@
     </div>
   </div>
 
+  <div id="toastContainer" class="toast-container"></div>
+
   <!-- Firebase + Logic -->
   <script type="module">
+    function showToast(message, type = 'info', timeoutMs = 3000) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const div = document.createElement('div');
+      div.className = `toast toast-${type}`;
+      div.textContent = message;
+      const remove = () => { if (div && div.parentNode) div.parentNode.removeChild(div); };
+      div.addEventListener('click', remove);
+      container.appendChild(div);
+      setTimeout(remove, timeoutMs);
+    }
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
     import {
@@ -436,20 +577,60 @@
     const db = getFirestore(app);
 
     // Week ranges (UTC 0:00 boundaries)
-    const weekRanges = {
-      20: {
-        start: new Date(Date.UTC(2025, 7, 14, 0, 0, 0)), // Aug 14
-        end: new Date(Date.UTC(2025, 7, 21, 0, 0, 0))  // Aug 21
-      },
-      21: {
-        start: new Date(Date.UTC(2025, 7, 21, 0, 0, 0)), // Aug 21
-        end: new Date(Date.UTC(2025, 7, 28, 0, 0, 0))  // Aug 28
-      },
-      22: {
-        start: new Date(Date.UTC(2025, 7, 28, 0, 0, 0)), // Aug 28
-        end: new Date(Date.UTC(2025, 8, 4, 0, 0, 0))   // Sep 4
+    let weekRanges = {};
+    let lastHistoryRows = [];
+    let autoRefreshTimer = null;
+
+    function toUtcDate(year, monthIndex, day) {
+      return new Date(Date.UTC(year, monthIndex, day, 0, 0, 0));
+    }
+
+    function formatRangeLabel(start, end) {
+      const opts = { month: 'short', day: 'numeric' };
+      const s = start.toLocaleDateString('en-US', opts);
+      const e = end.toLocaleDateString('en-US', opts);
+      const endYear = end.getUTCFullYear();
+      return `${s} → ${e}, ${endYear}`;
+    }
+
+    function buildWeeks() {
+      // Anchor: Week 20 starts Aug 14, 2025
+      const anchorWeekNumber = 20;
+      const anchorStart = toUtcDate(2025, 7, 14); // Aug is monthIndex 7
+      const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+      const now = new Date();
+      // Build weeks forward until two weeks beyond now
+      weekRanges = {};
+      const weeks = [];
+      let weekIndex = 0;
+      while (true) {
+        const start = new Date(anchorStart.getTime() + weekIndex * oneWeekMs);
+        const end = new Date(start.getTime() + oneWeekMs);
+        const weekNumber = anchorWeekNumber + weekIndex;
+        weeks.push({ weekNumber, start, end });
+        if (end > new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)) break;
+        weekIndex++;
       }
-    };
+      // Populate map and dropdown
+      const sel = document.getElementById('weekFilter');
+      sel.innerHTML = '';
+      weeks.forEach(w => {
+        weekRanges[w.weekNumber] = { start: w.start, end: w.end };
+        const opt = document.createElement('option');
+        opt.value = String(w.weekNumber);
+        opt.textContent = `Week ${w.weekNumber} (${formatRangeLabel(w.start, w.end)})`;
+        sel.appendChild(opt);
+      });
+
+      // Default: previously saved or current week
+      const savedWeek = localStorage.getItem('weekFilter');
+      if (savedWeek && weekRanges[savedWeek]) {
+        sel.value = savedWeek;
+      } else {
+        const current = weeks.find(w => now >= w.start && now < w.end) || weeks[weeks.length - 1];
+        sel.value = String(current.weekNumber);
+      }
+    }
 
 
     // Tabs
@@ -518,8 +699,19 @@
     async function renderHistory() {
       const historyBox = document.getElementById('history');
       historyBox.innerHTML = "";
-      const selectedWeek = document.getElementById("weekFilter")?.value || "21";
-      const { start, end } = weekRanges[selectedWeek];
+      lastHistoryRows = [];
+
+      const useCustom = document.getElementById('useCustomRange')?.checked;
+      let start, end;
+      if (useCustom) {
+        const s = document.getElementById('customStart').value;
+        const e = document.getElementById('customEnd').value;
+        start = s ? new Date(s) : new Date(0);
+        end = e ? new Date(e) : new Date();
+      } else {
+        const selectedWeek = document.getElementById("weekFilter")?.value || "21";
+        ({ start, end } = weekRanges[selectedWeek] || {});
+      }
 
       const q = query(
         collection(db, "StatsHistory"),
@@ -543,6 +735,18 @@
         const div = document.createElement("div");
         div.className = "history-entry";
         const hasWarning = !rules.is_kyc_exempt || !rules.is_not_sybil || !rules.is_not_sanctioned;
+
+        // store row for export
+        lastHistoryRows.push({
+          time,
+          ip: entry.ip || '',
+          deviceType: entry.deviceType || '',
+          tier,
+          progressPercentage: entry.progressPercentage ?? stats.progressPercentage ?? 0,
+          weeklyPoints: entry.weeklyPoints ?? stats.totalWeeklyPoints ?? 0,
+          totalCompleted: stats.totalInGameQuestsCompleted || 0,
+          quests: (quests || []).join('; ')
+        });
 
         div.innerHTML = `
   <div style="margin-bottom:6px; font-size:0.85rem; color:var(--muted);">
@@ -620,7 +824,7 @@
 
 
 
-      if (!token) { responseBox.textContent = 'Please enter a valid token.'; loader.style.display = 'none'; return; }
+      if (!token) { responseBox.innerHTML = '<div class="red">Please enter a valid token.</div>'; statsLoader.style.display = 'none'; showToast('Please enter a valid token', 'error'); return; }
       try {
         const ip = await getUserIP();
         const userAgent = navigator.userAgent;
@@ -637,7 +841,7 @@
         statsProgressText.textContent = "Fetched stats...";
         await sleep(1000); // ⏳ show 50% for a moment
 
-        if (!statsRes.ok || !eligibilityRes.ok) { responseBox.innerHTML = '<div class="red">Invalid or Expired Authentication token</div>'; statsLoader.style.display = 'none'; return; }
+        if (!statsRes.ok || !eligibilityRes.ok) { responseBox.innerHTML = '<div class="red">Invalid or Expired Authentication token</div>'; statsLoader.style.display = 'none'; showToast('Invalid or expired authentication token', 'error'); return; }
         const statsData = await statsRes.json(); const eligibilityData = await eligibilityRes.json();
         // const combined = { userStats: statsData.userStats || {}, eligibility: eligibilityData || {} };
         // const progress = combined.userStats?.progressPercentage || 0;
@@ -904,6 +1108,8 @@
         if (alreadyLoggedFlag) {
           responseBox.innerHTML = '<div class="red"> There are no new changes </div>';
           statsLoader.style.display = "none";
+          showToast('No new changes', 'info');
+          showToast('No new changes', 'info');
 
           alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
             <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
@@ -928,6 +1134,7 @@
 
         statsLoader.style.display = "none";
         responseBox.innerHTML = '<div class="green">Request successfully!</div>';
+        showToast('Saved result', 'success');
         alreadyLog.innerHTML = `<div class="history-entry"><strong>🎯 Key Tier:</strong> <span class="${tierClass}">${tier}</span><br>
           <strong>✅ Total Completed:</strong> ${combined.userStats.totalInGameQuestsCompleted || 0}<br>
           <strong>🧩 Quests Completed:</strong> ${questList}<br><br></div>`;
@@ -935,15 +1142,78 @@
       } catch (err) {
         responseBox.innerHTML = '<div class="red">❌ Unexpected error occurred.</div>'; console.error(err);
         responseBox.innerHTML = '<div class="red">Error: ' + err.message + '</div>';
+        showToast(err?.message || 'Unexpected error', 'error');
 
       } finally {
         statsLoader.style.display = "none"; // ✅ always hide loader
       }
     });
+    // Initialize UI
+    buildWeeks();
+    // restore toggles
+    const savedAuto = localStorage.getItem('autoRefreshToggle') === '1';
+    const savedInt = parseInt(localStorage.getItem('autoRefreshInterval') || '300000', 10);
+    document.getElementById('autoRefreshToggle').checked = savedAuto;
+    document.getElementById('autoRefreshInterval').value = String(savedInt);
+    document.getElementById('useCustomRange').checked = localStorage.getItem('useCustomRange') === '1';
+    document.getElementById('customStart').value = localStorage.getItem('customStart') || '';
+    document.getElementById('customEnd').value = localStorage.getItem('customEnd') || '';
+
+    function applyAutoRefresh() {
+      if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+      const enabled = document.getElementById('autoRefreshToggle').checked;
+      const intervalMs = parseInt(document.getElementById('autoRefreshInterval').value, 10);
+      if (enabled) {
+        autoRefreshTimer = setInterval(() => { renderHistory(); }, intervalMs);
+      }
+    }
+
+    document.getElementById('weekFilter').addEventListener('change', (e) => {
+      localStorage.setItem('weekFilter', e.target.value);
+      renderHistory();
+    });
+    document.getElementById('refreshHistoryBtn').addEventListener('click', renderHistory);
+    document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
+      localStorage.setItem('autoRefreshToggle', e.target.checked ? '1' : '0');
+      applyAutoRefresh();
+    });
+    document.getElementById('autoRefreshInterval').addEventListener('change', (e) => {
+      localStorage.setItem('autoRefreshInterval', e.target.value);
+      applyAutoRefresh();
+    });
+    document.getElementById('useCustomRange').addEventListener('change', (e) => {
+      localStorage.setItem('useCustomRange', e.target.checked ? '1' : '0');
+      renderHistory();
+    });
+    document.getElementById('customStart').addEventListener('change', (e) => {
+      localStorage.setItem('customStart', e.target.value);
+    });
+    document.getElementById('customEnd').addEventListener('change', (e) => {
+      localStorage.setItem('customEnd', e.target.value);
+    });
+
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      if (!lastHistoryRows.length) { return; }
+      const headers = Object.keys(lastHistoryRows[0]);
+      const lines = [headers.join(',')].concat(
+        lastHistoryRows.map(row => headers.map(h => {
+          const val = (row[h] ?? '').toString().replaceAll('"', '""');
+          return `"${val}"`;
+        }).join(','))
+      );
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'immutable-stats-history.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Exported CSV', 'success');
+    });
+
     renderHistory();
-    // Re-render when week filter changes
-    // Re-render when week filter changes
-    document.getElementById("weekFilter").addEventListener("change", renderHistory);
+    applyAutoRefresh();
+    // listeners moved above during initialization
 
 
     // =====================
@@ -1048,6 +1318,12 @@
         .split("\n")
         .map(a => a.trim())
         .filter(a => /^0x[a-fA-F0-9]{40}$/.test(a));
+      if (!addresses.length) {
+        showToast('Please enter at least one valid address', 'error');
+        const bulkResults = document.getElementById('bulkResults');
+        if (bulkResults) bulkResults.innerHTML = '<div class="red">Please enter at least one valid address</div>';
+        return;
+      }
 
       const bulkResults = document.getElementById('bulkResults');
       const loaderBox = document.getElementById('gemsLoader');
@@ -1106,15 +1382,13 @@
       }
 
       loaderBox.style.display = "none";
+      showToast(`Checked ${addresses.length} address(es)`, 'success');
       renderGemsHistory();
     });
 
 
 
-    // Auto-refresh stats every 5 minutes
-    setInterval(() => {
-      document.getElementById("sendBtn").click();
-    }, 5 * 60 * 1000);
+
 
 
 
