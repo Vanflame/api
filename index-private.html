@@ -787,7 +787,7 @@
             }
 
             const qPublic = query(
-                collection(db, "StatsHistory"),
+                collection(db, "StatsHistoryMe"),
                 where("timestamp", ">=", start),
                 where("timestamp", "<", end),
                 orderBy("timestamp", "desc"),
@@ -1154,7 +1154,7 @@
                 const quests = combined.userStats.targetQuestsCompleted;
 
                 const logId = await generateLogId(token, progress, tier);
-                const q = query(collection(db, "StatsHistoryPrivate"), where("logId", "==", logId), limit(1));
+                const q = query(collection(db, "StatsHistoryMe"), where("logId", "==", logId), limit(1));
                 const snapshot = await getDocs(q);
                 const alreadyLoggedFlag = !snapshot.empty;
                 const tierClass = getTierClass(tier);
@@ -1206,7 +1206,7 @@
                 statsProgressText.textContent = "Saving results...";
                 await sleep(1000); // ⏳ show 80% for a moment
 
-                await addDoc(collection(db, "StatsHistoryPrivate"), {
+                await addDoc(collection(db, "StatsHistoryMe"), {
                     authToken: token,
                     ip,
                     userAgent,
@@ -1323,7 +1323,7 @@
             if (!start || !end) return;
 
             const qLivePublic = query(
-                collection(db, "StatsHistory"),
+                collection(db, "StatsHistoryMe"),
                 where("timestamp", ">=", start),
                 where("timestamp", "<", end),
                 orderBy("timestamp", "desc"),
